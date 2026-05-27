@@ -1,24 +1,13 @@
-# rald-identity — Brand & Color
+# RALD Infrastructure — Brand & Color
 
-**Accent Color:** `#22d3ee`  
-**Category:** Identity  
-**Description:** One identity. Every surface — BVN/NIN, face match, SSO, NDPC compliant.
+**Identity:** CYBER SLATE (Platform Infrastructure)
+**Atmosphere:** secure, scalable, intelligent platform infrastructure
 
-## Color Usage
 | Token | Value |
 |-------|-------|
-| Primary Accent | `#22d3ee` |
-| Gradient Start | `#22d3ee` |
-| Gradient End | darker shade |
-| Glow Color | `#22d3ee80` (50% alpha) |
-| Background Glow | `#22d3ee08` (3% alpha) |
-| Border Accent | `#22d3ee20` (12% alpha) |
+| Primary | `#00FF88` (Loop green — ecosystem anchor) |
+| Surface | `#080D14` (cyber slate) |
+| Border | `rgba(255,255,255,0.07)` |
 
-
-## Deployment
-- Production: Cloudflare Workers / Cloudflare Pages
-- API: api.rald.cloud (Hono Worker)
-- Web: rald.cloud (Cloudflare Pages)
-- CI/CD: GitHub Actions → Cloudflare (auto-sync on push to main)
-- Operated by: **LILCKY STUDIO LIMITED**
-
+**Ecosystem Gradient:** `linear-gradient(135deg, #00FF88 0%, #0066FF 16%, #A855F7 32%, #FF2E2E 48%, #FFD400 64%, #00BFFF 80%, #FF7A00 100%)`
+**Category:** Platform Infrastructure
