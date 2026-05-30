@@ -95,6 +95,7 @@ console.log(me.raldId); // "RALD-A3F9KZ"`;
       <nav>
         <div className="nav-inner">
           <div className="nav-logo">
+            <img src="/rald-logo.png" alt="RALD" height={32} width={32} style={{ objectFit: "contain", marginRight: 8, verticalAlign: "middle" }} />
             RALD<span style={{ color: "var(--yellow)" }}>·</span>IDENTITY
             <span className="badge">BETA</span>
           </div>
