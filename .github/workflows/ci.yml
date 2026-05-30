@@ -1,13 +1,23 @@
 name: CI
+
 on:
   push:
     branches: ["main", "master"]
   pull_request:
     branches: ["main", "master"]
+
 jobs:
-  ci:
+  build:
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
-      - name: CI check
-        run: echo "CI green ✓"
+      - uses: actions/setup-node@v4
+        with:
+          node-version: "22"
+          cache: "npm"
+      - name: Install
+        run: npm install
+      - name: Type check
+        run: npm run typecheck
+      - name: Build
+        run: npm run build
