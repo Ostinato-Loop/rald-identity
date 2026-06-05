@@ -47,7 +47,7 @@ function CopyButton({ text }: { text: string }) {
     });
   };
   return (
-    <button onClick={copy} style={{
+    <button type="button" onClick={copy} style={{
       background: "transparent", border: "1px solid rgba(255,255,255,0.1)",
       borderRadius: 6, padding: "3px 10px", fontSize: 11, color: "var(--muted)",
       cursor: "pointer", fontFamily: "inherit",
@@ -128,17 +128,15 @@ console.log(me.raldId); // "RALD-A3F9KZ"`;
             <a href="#quickstart" className="btn-primary">Quick Start →</a>
             <a href="#api" className="btn-ghost">API Reference</a>
           </div>
-          <div
+          <button
+            type="button"
             className="install-bar"
             onClick={copyInstall}
-            onKeyDown={(e) => e.key === "Enter" && copyInstall()}
             title="Click to copy"
-            role="button"
-            tabIndex={0}
-          >
+            >
             <code>npm install @rald/auth-sdk</code>
             <span className="copy-hint">click to copy</span>
-          </div>
+          </button>
         </div>
       </section>
 
