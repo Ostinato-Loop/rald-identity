@@ -104,7 +104,7 @@ console.log(me.raldId); // "RALD-A3F9KZ"`;
             <a href="#quickstart">Quick Start</a>
             <a href="#api">API Reference</a>
             <a href="#integrations">Integrations</a>
-            <a href="https://profiles.rald.cloud" target="_blank" className="nav-cta">Sign In</a>
+            <a href="https://profiles.rald.cloud" target="_blank" rel="noreferrer" className="nav-cta">Sign In</a>
           </div>
         </div>
       </nav>
@@ -131,7 +131,10 @@ console.log(me.raldId); // "RALD-A3F9KZ"`;
           <div
             className="install-bar"
             onClick={copyInstall}
+            onKeyDown={(e) => e.key === "Enter" && copyInstall()}
             title="Click to copy"
+            role="button"
+            tabIndex={0}
           >
             <code>npm install @rald/auth-sdk</code>
             <span className="copy-hint">click to copy</span>
@@ -366,7 +369,7 @@ console.log(me.raldId); // "RALD-A3F9KZ"`;
             <div className="footer-links">
               <a href="https://profiles.rald.cloud">Sign In</a>
               <a href="https://profile.rald.cloud">Profile</a>
-              <a href="https://github.com/Ostinato-Loop" target="_blank">GitHub</a>
+              <a href="https://github.com/Ostinato-Loop" target="_blank" rel="noreferrer">GitHub</a>
               <a href="mailto:identity@rald.cloud">Contact</a>
             </div>
           </div>
