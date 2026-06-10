@@ -5,6 +5,9 @@ const AUTH =
   (import.meta.env.VITE_RALD_AUTH_URL as string | undefined) ??
   "https://auth.rald.cloud";
 
+const FETCH_TIMEOUT_MS = 15_000;
+const RETRY_DELAY_MS   = 1_200;
+
 export class ApiError extends Error {
   constructor(public readonly status: number, message: string) {
     super(message);
@@ -22,18 +25,67 @@ async function raldFetch<T>(
   if (body) headers["Content-Type"] = "application/json";
   if (token) headers.Authorization = `Bearer ${token}`;
 
-  const res = await fetch(`${AUTH}${path}`, {
-    method,
-    credentials: "include",
-    headers,
-    body: body ? JSON.stringify(body) : undefined,
-  });
-  const data: unknown = await res.json().catch(() => ({}));
-  if (!res.ok) {
-    const msg = (data as { error?: string }).error ?? "Request failed";
-    throw new ApiError(res.status, msg);
+  const ctrl = new AbortController();
+  const tid  = setTimeout(() => ctrl.abort("timeout"), FETCH_TIMEOUT_MS);
+
+  const attemptFetch = async (): Promise<Response> => {
+    return fetch(`${AUTH}${path}`, {
+      method,
+      credentials: "include",
+      headers,
+      signal: ctrl.signal,
+      body: body ? JSON.stringify(body) : undefined,
+    });
+  };
+
+  try {
+    let res: Response;
+    try {
+      res = await attemptFetch();
+    } catch (networkErr) {
+      // One automatic retry after RETRY_DELAY_MS for transient network failures
+      if (ctrl.signal.aborted) {
+        throw new ApiError(0, "Request timed out. Check your connection and try again.");
+      }
+      await new Promise(r => setTimeout(r, RETRY_DELAY_MS));
+      res = await attemptFetch();
+    }
+
+    clearTimeout(tid);
+
+    // Rate-limited — respect Retry-After if present
+    if (res.status === 429) {
+      const retryAfter = Number.parseInt(res.headers.get("Retry-After") ?? "30", 10);
+      throw new ApiError(429, `Too many requests. Please wait ${retryAfter}s and try again.`);
+    }
+
+    // 5xx — one retry
+    if (res.status >= 500) {
+      await new Promise(r => setTimeout(r, RETRY_DELAY_MS));
+      const retry = await attemptFetch();
+      clearTimeout(tid);
+      if (retry.status >= 500) {
+        const data: unknown = await retry.json().catch(() => ({}));
+        const msg = (data as { error?: string }).error ?? "Server error. Try again in a moment.";
+        throw new ApiError(retry.status, msg);
+      }
+      res = retry;
+    }
+
+    const data: unknown = await res.json().catch(() => ({}));
+    if (!res.ok) {
+      const msg = (data as { error?: string }).error ?? "Request failed";
+      throw new ApiError(res.status, msg);
+    }
+    return data as T;
+  } catch (err) {
+    clearTimeout(tid);
+    if (err instanceof ApiError) throw err;
+    if (err instanceof DOMException && err.name === "AbortError") {
+      throw new ApiError(0, "Request timed out. Check your connection and try again.");
+    }
+    throw new ApiError(0, "Network error. Check your connection and try again.");
   }
-  return data as T;
 }
 
 // ── Types ─────────────────────────────────────────────────────────────────────
