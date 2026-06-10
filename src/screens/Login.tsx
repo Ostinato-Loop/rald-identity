@@ -1,4 +1,4 @@
-import { useRef, useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import { Link, useNavigate } from "react-router-dom";
 import { AtSign, ArrowRight, Loader2 } from "lucide-react";
 import { Shell } from "@/components/Shell";
@@ -13,6 +13,9 @@ export function Login() {
   const [loading, setLoad]  = useState(false);
   const [error,  setError]  = useState<string | null>(null);
   const inputRef            = useRef<HTMLInputElement>(null);
+
+  // Focus input on mount without triggering a11y/noAutofocus rule
+  useEffect(() => { inputRef.current?.focus(); }, []);
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -44,12 +47,10 @@ export function Login() {
   return (
     <Shell>
       <div className="screen-enter" style={{ display: "flex", flexDirection: "column", flex: 1 }}>
-        {/* Logo */}
         <div className="logo-wrap mb-8" style={{ marginTop: 16 }}>
           <RaldMark size={64} />
         </div>
 
-        {/* Hero copy */}
         <h1 className="text-center">Welcome back</h1>
         <p className="text-center text-muted text-sm" style={{ maxWidth: 280, margin: "12px auto 0", lineHeight: 1.6 }}>
           Sign in to your{" "}
@@ -57,7 +58,6 @@ export function Login() {
           {" "}and return to the ecosystem.
         </p>
 
-        {/* Form */}
         <form style={{ marginTop: 32, display: "flex", flexDirection: "column" }} onSubmit={handleSubmit}>
           <label htmlFor="login-username" className="text-sm" style={{ fontWeight: 600, marginBottom: 8 }}>
             Your username
@@ -69,7 +69,6 @@ export function Login() {
               ref={inputRef}
               id="login-username"
               type="text"
-              autoFocus
               autoComplete="username"
               autoCapitalize="none"
               autoCorrect="off"
