@@ -70,7 +70,8 @@ export function OTP() {
     };
     run();
   // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [complete, verifying]);
+  // biome-ignore lint/correctness/useExhaustiveDependencies: other state deps intentionally excluded; run is gated by complete+verifying
+  }, [complete, verifying, state.loginFlow]);
 
   const setAt = (i: number, v: string) =>
     setDigits(prev => { const n = [...prev]; n[i] = v; return n; });
