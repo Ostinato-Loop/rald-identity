@@ -128,9 +128,8 @@ export function QrApprove() {
           <ApprovingState />
         )}
 
-        {phase === "done" && (
-          {/* biome-ignore lint/style/noNonNullAssertion: result is guaranteed non-null when phase==="done" */}
-          <DoneState result={result!} />
+        {phase === "done" && result != null && (
+          <DoneState result={result} />
         )}
 
         {phase === "error" && (
