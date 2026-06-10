@@ -1,6 +1,6 @@
 import { useEffect, useState } from "react";
 import { useNavigate } from "react-router-dom";
-import { ArrowLeft, ArrowRight, Loader2, Mail, MessageSquare } from "lucide-react";
+import { ArrowLeft, ArrowRight, Mail, MessageSquare } from "lucide-react";
 import { toast } from "sonner";
 import { Shell } from "@/components/Shell";
 import { sendSMSOTP, sendEmailOTP, ApiError } from "@/lib/auth";
