@@ -13,14 +13,19 @@ export class ApiError extends Error {
 }
 
 async function raldFetch<T>(
-  method: "GET" | "POST",
+  method: "GET" | "POST" | "PATCH",
   path: string,
   body?: unknown,
+  token?: string,
 ): Promise<T> {
+  const headers: Record<string, string> = {};
+  if (body) headers["Content-Type"] = "application/json";
+  if (token) headers["Authorization"] = `Bearer ${token}`;
+
   const res = await fetch(`${AUTH}${path}`, {
     method,
     credentials: "include",
-    headers: body ? { "Content-Type": "application/json" } : undefined,
+    headers,
     body: body ? JSON.stringify(body) : undefined,
   });
   const data: unknown = await res.json().catch(() => ({}));
@@ -106,6 +111,13 @@ export const completeRegistration = (payload: {
     payload,
   );
 
+/** Save profile data (region, etc.) — fire-and-forget, never blocks auth flow. */
+export const saveProfile = (
+  token: string,
+  data: { country?: string; region_state?: string },
+): Promise<unknown> =>
+  raldFetch<{ ok: boolean }>("PATCH", "/profiles/me", data, token).catch(() => null);
+
 /** Get the current session from the worker (validates cookie). */
 export const getSession = () =>
   raldFetch<SessionResult>("GET", "/session").catch(() => null);
@@ -117,29 +129,23 @@ export interface QrScanResult {
   desktop_ip: string;
 }
 
-/** Mobile: tell the backend this QR token has been scanned (requires auth). */
 export const qrScan = (token: string) =>
   raldFetch<QrScanResult>("POST", `/auth/qr/scan/${token}`);
 
-/** Mobile: approve the QR login (requires auth). Issues JWT for the desktop. */
 export const qrApprove = (token: string) =>
   raldFetch<{ ok: boolean }>("POST", `/auth/qr/approve/${token}`);
 
-/** Mobile: reject the QR login (requires auth). */
 export const qrReject = (token: string) =>
   raldFetch<{ ok: boolean }>("POST", `/auth/qr/reject/${token}`);
 
-// ── WebAuthn (future: biometric login via rald-identity) ──────────────────────
+// ── WebAuthn ──────────────────────────────────────────────────────────────────
 
 export const webauthnLoginOptions = (username: string) =>
   raldFetch<Record<string, unknown>>("POST", "/auth/webauthn/login/options", {
     username,
   });
 
-export const webauthnLoginVerify = (
-  username:   string,
-  credential: unknown,
-) =>
+export const webauthnLoginVerify = (username: string, credential: unknown) =>
   raldFetch<{ ok: boolean; token: string; user: AuthUser }>(
     "POST",
     "/auth/webauthn/login/verify",
