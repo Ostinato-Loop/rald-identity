@@ -56,6 +56,21 @@ export function setState(patch: Partial<OnboardingState>) {
   for (const fn of _subs) { fn(); }
 }
 
+/** Clear flow state (keep appId + redirectTo, wipe auth progress) */
+export function resetFlow() {
+  setState({
+    username:      "",
+    method:        null,
+    contact:       "",
+    pendingUserId: null,
+    pinId:         null,
+    token:         null,
+    loginFlow:     false,
+    country:       null,
+    regionState:   null,
+  });
+}
+
 export function useStore(): [OnboardingState, typeof setState] {
   const [snap, setSnap] = useState<OnboardingState>(() => getState());
   useEffect(() => {
@@ -66,7 +81,36 @@ export function useStore(): [OnboardingState, typeof setState] {
   return [snap, setState];
 }
 
-// Redirect engine
+// ── Open-redirect protection ───────────────────────────────────────────────────
+// Only URLs within *.rald.cloud (https only) are accepted as redirect targets.
+
+const ALLOWED_ORIGINS = new Set([
+  "https://loop.rald.cloud",
+  "https://messenger.rald.cloud",
+  "https://payrald.rald.cloud",
+  "https://ai.rald.cloud",
+  "https://business.loop.rald.cloud",
+  "https://mail.rald.cloud",
+  "https://voice.rald.cloud",
+  "https://dispatch.rald.cloud",
+  "https://profiles.rald.cloud",
+  "https://profile.rald.cloud",
+]);
+
+export function validateRedirectUrl(raw: string): string | null {
+  try {
+    const url = new URL(raw);
+    if (url.protocol !== "https:") return null;
+    if (ALLOWED_ORIGINS.has(url.origin)) return raw;
+    // Accept any *.rald.cloud subdomain
+    if (url.hostname.endsWith(".rald.cloud")) return raw;
+    return null;
+  } catch {
+    return null;
+  }
+}
+
+// ── Redirect engine ────────────────────────────────────────────────────────────
 const APP_URLS: Record<string, string> = {
   loop:            "https://loop.rald.cloud",
   messenger:       "https://messenger.rald.cloud",
@@ -88,7 +132,7 @@ const APP_URLS: Record<string, string> = {
  */
 export function resolveRedirectUrl(state: OnboardingState): string {
   let base: string;
-  if (state.redirectTo) {
+  if (state.redirectTo && validateRedirectUrl(state.redirectTo)) {
     base = state.redirectTo;
   } else if (state.appId && APP_URLS[state.appId]) {
     base = APP_URLS[state.appId];
