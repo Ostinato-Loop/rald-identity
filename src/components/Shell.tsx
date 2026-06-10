@@ -12,7 +12,6 @@ export function Shell({ step, total = 5, children }: ShellProps) {
 
   return (
     <div className="shell">
-      {/* Ambient aurora */}
       <div className="aurora" aria-hidden />
       <div
         className="aurora-orb animate-float"
@@ -45,9 +44,10 @@ export function Shell({ step, total = 5, children }: ShellProps) {
 
         {showProgress && (
           <div className="progress-bar" aria-hidden>
-            {Array.from({ length: total }).map((_, i) => (
-              <div key={i} className={`progress-pip${i < step ? " done" : ""}`} />
-            ))}
+            {Array.from({ length: total }).map((_, i) => {
+              // biome-ignore lint/suspicious/noArrayIndexKey: progress pips are fixed-position slots that never reorder
+              return <div key={i} className={`progress-pip${i < step ? " done" : ""}`} />;
+            })}
           </div>
         )}
 
