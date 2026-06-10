@@ -7,7 +7,7 @@ interface ShellProps {
   children: ReactNode;
 }
 
-export function Shell({ step, total = 4, children }: ShellProps) {
+export function Shell({ step, total = 5, children }: ShellProps) {
   const showProgress = step !== undefined && step > 0;
 
   return (
@@ -41,9 +41,6 @@ export function Shell({ step, total = 4, children }: ShellProps) {
       <div className="shell-inner">
         <header className="shell-header">
           <RaldWordmark />
-          {showProgress && (
-            <span className="step-label">Step {step} of {total}</span>
-          )}
         </header>
 
         {showProgress && (
