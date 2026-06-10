@@ -1,36 +1,48 @@
+// RALD Identity — Logo & Wordmark components
+// Uses the real RALD tri-colour PNG logo from /public/rald-logo.png.
+// Falls back gracefully when the image hasn't loaded yet.
+// LILCKY STUDIO LIMITED
+
 interface LogoProps { size?: number; }
 
+/** Square RALD mark — used in QR approve, error states, profile headers. */
 export function RaldMark({ size = 72 }: LogoProps) {
   return (
-    <svg
+    <img
+      src="/rald-logo.png"
       width={size}
       height={size}
-      viewBox="0 0 72 72"
-      fill="none"
-      xmlns="http://www.w3.org/2000/svg"
-      aria-label="RALD"
-    >
-      <rect width="72" height="72" rx="20" fill="oklch(0.52 0.15 150)" />
-      <text
-        x="36"
-        y="50"
-        textAnchor="middle"
-        fontFamily="'Plus Jakarta Sans', sans-serif"
-        fontWeight="800"
-        fontSize="32"
-        fill="white"
-        letterSpacing="-1"
-      >
-        R
-      </text>
-    </svg>
+      alt="RALD"
+      draggable={false}
+      style={{
+        objectFit:   "contain",
+        display:     "block",
+        userSelect:  "none",
+        borderRadius: size >= 48 ? 16 : 8,
+      }}
+    />
   );
 }
 
+/** Horizontal wordmark — logo mark + "RALD" text side by side. */
 export function RaldWordmark() {
   return (
     <div className="wordmark">
-      <div className="wordmark-dot" aria-hidden />
+      <img
+        src="/rald-logo.png"
+        width={30}
+        height={30}
+        alt=""
+        aria-hidden
+        draggable={false}
+        style={{
+          objectFit:    "contain",
+          display:      "block",
+          userSelect:   "none",
+          borderRadius: 8,
+          flexShrink:   0,
+        }}
+      />
       RALD
     </div>
   );
