@@ -27,3 +27,62 @@ jobs:
           apiToken: ${{ secrets.CLOUDFLARE_API_TOKEN }}
           accountId: ${{ secrets.CLOUDFLARE_ACCOUNT_ID }}
           command: pages deploy dist --project-name=rald-identity
+      - name: Ensure identity.rald.cloud custom domain on Pages
+        env:
+          CLOUDFLARE_API_TOKEN: ${{ secrets.CLOUDFLARE_API_TOKEN }}
+          CLOUDFLARE_ACCOUNT_ID: ${{ secrets.CLOUDFLARE_ACCOUNT_ID }}
+        run: |
+          node << 'JSEOF'
+          const token = process.env.CLOUDFLARE_API_TOKEN;
+          const account = process.env.CLOUDFLARE_ACCOUNT_ID;
+          const h = { 'Authorization': `Bearer ${token}`, 'Content-Type': 'application/json' };
+          const DOMAIN = 'identity.rald.cloud';
+          const PROJECT = 'rald-identity';
+          (async () => {
+            // Check existing custom domains
+            const existing = await fetch(
+              `https://api.cloudflare.com/client/v4/accounts/${account}/pages/projects/${PROJECT}/domains`,
+              { headers: h }
+            ).then(r => r.json());
+            if (existing.result?.find(d => d.name === DOMAIN)) {
+              console.log(`✓ ${DOMAIN} already set as custom domain`);
+              return;
+            }
+            // Add custom domain
+            const res = await fetch(
+              `https://api.cloudflare.com/client/v4/accounts/${account}/pages/projects/${PROJECT}/domains`,
+              { method: 'POST', headers: h, body: JSON.stringify({ name: DOMAIN }) }
+            ).then(r => r.json());
+            if (res.success) {
+              console.log(`✓ Added ${DOMAIN} as custom domain for Pages project ${PROJECT}`);
+            } else {
+              // 8000007 = already exists
+              const alreadyExists = res.errors?.some(e => e.code === 8000007);
+              if (alreadyExists) {
+                console.log(`✓ ${DOMAIN} already configured`);
+              } else {
+                console.error('Custom domain setup failed:', JSON.stringify(res.errors));
+              }
+            }
+            // Ensure DNS record exists
+            const zones = await fetch(
+              'https://api.cloudflare.com/client/v4/zones?name=rald.cloud',
+              { headers: h }
+            ).then(r => r.json());
+            const zone = zones.result?.[0];
+            if (!zone) { console.log('rald.cloud zone not found — skipping DNS'); return; }
+            const dns = await fetch(
+              `https://api.cloudflare.com/client/v4/zones/${zone.id}/dns_records?name=${DOMAIN}`,
+              { headers: h }
+            ).then(r => r.json());
+            if (dns.result?.length) {
+              console.log(`✓ DNS ${dns.result.map(r => r.type + ' ' + r.content).join(', ')} already exists`);
+              return;
+            }
+            const dnsRes = await fetch(
+              `https://api.cloudflare.com/client/v4/zones/${zone.id}/dns_records`,
+              { method: 'POST', headers: h, body: JSON.stringify({ type: 'CNAME', name: 'identity', content: `${PROJECT}.pages.dev`, proxied: true }) }
+            ).then(r => r.json());
+            console.log(dnsRes.success ? `✓ Created CNAME identity.rald.cloud → ${PROJECT}.pages.dev` : 'DNS failed: ' + JSON.stringify(dnsRes.errors));
+          })().catch(e => console.error('[WARN]', e.message));
+          JSEOF
