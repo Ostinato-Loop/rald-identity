@@ -55,7 +55,7 @@ function saveConsent(prefs: ConsentPrefs) {
 // ── Privacy API helpers ────────────────────────────────────────────────────────
 async function fetchPrivacyMe(token: string | null) {
   const headers: Record<string, string> = {};
-  if (token) headers["Authorization"] = `Bearer ${token}`;
+  if (token) headers.Authorization = `Bearer ${token}`;
   const res = await fetch(`${AUTH}/privacy/me`, { credentials: "include", headers });
   if (!res.ok) throw new Error("Could not load privacy overview");
   return res.json() as Promise<{
@@ -68,7 +68,7 @@ async function fetchPrivacyMe(token: string | null) {
 
 async function patchPermissions(token: string | null, patch: Partial<ConsentPrefs & { profile_visible: boolean; activity_tracking: boolean; marketing_emails: boolean }>) {
   const headers: Record<string, string> = { "Content-Type": "application/json" };
-  if (token) headers["Authorization"] = `Bearer ${token}`;
+  if (token) headers.Authorization = `Bearer ${token}`;
   return fetch(`${AUTH}/privacy/permissions`, {
     method: "PATCH", credentials: "include", headers,
     body: JSON.stringify(patch),
@@ -77,7 +77,7 @@ async function patchPermissions(token: string | null, patch: Partial<ConsentPref
 
 async function requestExport(token: string | null) {
   const headers: Record<string, string> = {};
-  if (token) headers["Authorization"] = `Bearer ${token}`;
+  if (token) headers.Authorization = `Bearer ${token}`;
   const res = await fetch(`${AUTH}/privacy/export`, { credentials: "include", headers });
   if (!res.ok) throw new Error("Export failed");
   const blob = await res.blob();
@@ -91,7 +91,7 @@ async function requestExport(token: string | null) {
 
 async function requestDeletion(token: string | null, reason?: string) {
   const headers: Record<string, string> = { "Content-Type": "application/json" };
-  if (token) headers["Authorization"] = `Bearer ${token}`;
+  if (token) headers.Authorization = `Bearer ${token}`;
   const res = await fetch(`${AUTH}/privacy/delete-request`, {
     method: "POST", credentials: "include", headers,
     body: JSON.stringify({ confirm: true, reason }),
