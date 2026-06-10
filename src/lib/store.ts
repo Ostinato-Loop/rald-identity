@@ -11,6 +11,7 @@ export interface OnboardingState {
   pendingUserId: string | null;
   pinId:         string | null;
   token:         string | null;
+  loginFlow:     boolean;
 }
 
 const INITIAL: OnboardingState = {
@@ -22,6 +23,7 @@ const INITIAL: OnboardingState = {
   pendingUserId: null,
   pinId:         null,
   token:         null,
+  loginFlow:     false,
 };
 
 const KEY = "rald.identity.onboarding";
