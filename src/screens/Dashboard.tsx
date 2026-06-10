@@ -4,12 +4,14 @@
 // after a successful registration or login flow.
 // LILCKY STUDIO LIMITED
 
-import { useEffect } from "react";
+import type React from "react";
+import { useEffect, useState } from "react";
 import { useNavigate } from "react-router-dom";
 import { Shell }       from "@/components/Shell";
 import { RaldMark }    from "@/components/Logo";
-import { useStore }    from "@/lib/store";
-import { ExternalLink, Shield } from "lucide-react";
+import { useStore, setState } from "@/lib/store";
+import { getSession }  from "@/lib/auth";
+import { ExternalLink, Shield, Loader2 } from "lucide-react";
 
 const APPS = [
   { id: "loop",      label: "Loop",      desc: "Social feed",       url: "https://loop.rald.cloud",      color: "var(--green)" },
@@ -18,13 +20,50 @@ const APPS = [
 ] as const;
 
 export function Dashboard() {
-  const navigate = useNavigate();
-  const [store]  = useStore();
+  const navigate             = useNavigate();
+  const [store]              = useStore();
+  const [validating, setVal] = useState(true);
 
-  // If no token in store, user isn't authenticated — send them to login
+  // Validate server session on mount — clears stale in-memory tokens
   useEffect(() => {
-    if (!store.token) navigate("/login", { replace: true });
-  }, [store.token, navigate]);
+    let mounted = true;
+    setVal(true);
+    getSession().then(result => {
+      if (!mounted) return;
+      setVal(false);
+      if (!result?.ok) {
+        // Server session expired or invalid — wipe token and redirect to login
+        setState({ token: null });
+        navigate("/login", { replace: true });
+      }
+    });
+    return () => { mounted = false; };
+  }, [navigate]);
+
+  // Belt-and-suspenders: if no in-memory token while session check runs, redirect
+  useEffect(() => {
+    if (!store.token && !validating) navigate("/login", { replace: true });
+  }, [store.token, validating, navigate]);
+
+  if (validating) {
+    return (
+      <Shell>
+        <div
+          style={{
+            flex: 1,
+            display: "flex",
+            alignItems: "center",
+            justifyContent: "center",
+            gap: 12,
+            color: "var(--muted)",
+          }}
+        >
+          <Loader2 size={20} style={{ animation: "spin 0.7s linear infinite" }} />
+          <span className="text-sm">Verifying session…</span>
+        </div>
+      </Shell>
+    );
+  }
 
   if (!store.token) return null;
 
