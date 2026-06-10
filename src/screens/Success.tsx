@@ -76,6 +76,7 @@ export function Success() {
         </div>
 
         <button
+          type="button"
           className="btn btn-primary mt-8"
           onClick={() => { window.location.href = target; }}
         >

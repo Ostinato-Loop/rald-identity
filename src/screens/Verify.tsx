@@ -54,7 +54,7 @@ export function Verify() {
 
   return (
     <Shell step={2}>
-      <button className="btn btn-ghost mb-4" style={{ alignSelf: "flex-start" }} onClick={() => navigate("/")}>
+      <button type="button" className="btn btn-ghost mb-4" style={{ alignSelf: "flex-start" }} onClick={() => navigate("/")}>
         <ArrowLeft size={16} /> Back
       </button>
 
@@ -92,11 +92,11 @@ export function Verify() {
 
       {method && (
         <div className="mt-5">
-          <label className="text-sm" style={{ fontWeight: 600, display: "block", marginBottom: 8 }}>
+          <label htmlFor="contact-input" className="text-sm" style={{ fontWeight: 600, display: "block", marginBottom: 8 }}>
             {method === "sms" ? "Phone number" : "Email address"}
           </label>
           <input
-            autoFocus
+            id="contact-input"
             className="input-plain"
             type={method === "sms" ? "tel" : "email"}
             inputMode={method === "sms" ? "tel" : "email"}
@@ -110,7 +110,7 @@ export function Verify() {
       )}
 
       <div className="mt-auto" style={{ paddingTop: 32 }}>
-        <button className="btn btn-primary" disabled={!valid || sending} onClick={handleSend}>
+        <button type="button" className="btn btn-primary" disabled={!valid || sending} onClick={handleSend}>
           {sending ? <><span className="spinner" /> Sending…</> : <>Send Code <ArrowRight size={18} /></>}
         </button>
       </div>

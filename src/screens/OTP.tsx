@@ -117,7 +117,7 @@ export function OTP() {
 
   return (
     <Shell step={3}>
-      <button className="btn btn-ghost mb-4" style={{ alignSelf: "flex-start" }} onClick={() => navigate("/verify")}>
+      <button type="button" className="btn btn-ghost mb-4" style={{ alignSelf: "flex-start" }} onClick={() => navigate("/verify")}>
         <ArrowLeft size={16} /> Back
       </button>
 
@@ -162,6 +162,7 @@ export function OTP() {
           </p>
         ) : (
           <button
+            type="button"
             className="btn btn-ghost"
             style={{ margin: "0 auto", width: "auto" }}
             disabled={resending}
