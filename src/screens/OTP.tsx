@@ -172,25 +172,22 @@ export function OTP() {
         </p>
 
         <div className="otp-row mt-8">
-          {digits.map((d, i) => {
-            // biome-ignore lint/suspicious/noArrayIndexKey: OTP input slots are fixed-position and never reorder
-            return (
-              <input
-                key={i}
-                ref={el => { refs.current[i] = el; }}
-                className={boxClass(d)}
-                type="text"
-                inputMode="numeric"
-                pattern="\d*"
-                maxLength={1}
-                value={d}
-                disabled={verifying}
-                onChange={e => onChange(i, e.target.value)}
-                onKeyDown={e => onKeyDown(i, e)}
-                onFocus={e => e.target.select()}
-              />
-            );
-          })}
+          {digits.map((d, i) => (
+            // biome-ignore lint/suspicious/noArrayIndexKey: OTP slots are fixed-position
+            <input key={i}
+              ref={el => { refs.current[i] = el; }}
+              className={boxClass(d)}
+              type="text"
+              inputMode="numeric"
+              pattern="\d*"
+              maxLength={1}
+              value={d}
+              disabled={verifying}
+              onChange={e => onChange(i, e.target.value)}
+              onKeyDown={e => onKeyDown(i, e)}
+              onFocus={e => e.target.select()}
+            />
+          ))}
         </div>
 
         {verifying && (
