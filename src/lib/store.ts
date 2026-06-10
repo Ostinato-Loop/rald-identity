@@ -53,7 +53,7 @@ function getState(): OnboardingState { return _state; }
 export function setState(patch: Partial<OnboardingState>) {
   _state = { ..._state, ...patch };
   persist(_state);
-  _subs.forEach(fn => fn());
+  for (const fn of _subs) { fn(); }
 }
 
 export function useStore(): [OnboardingState, typeof setState] {
