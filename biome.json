@@ -1,6 +1,8 @@
 {
   "$schema": "https://biomejs.dev/schemas/1.9.4/schema.json",
-  "organizeImports": { "enabled": false },
+  "organizeImports": {
+    "enabled": false
+  },
   "linter": {
     "enabled": true,
     "rules": {
@@ -9,11 +11,15 @@
         "noExplicitAny": "warn",
         "noArrayIndexKey": "warn"
       },
-      "style": { "noNonNullAssertion": "warn" },
+      "style": {
+        "noNonNullAssertion": "warn"
+      },
       "a11y": {
         "noSvgWithoutTitle": "off",
         "noAutofocus": "warn",
-        "noLabelWithoutControl": "warn"
+        "noLabelWithoutControl": "warn",
+        "useSemanticElements": "warn",
+        "useButtonType": "warn"
       },
       "correctness": {
         "useExhaustiveDependencies": "warn"
@@ -23,6 +29,15 @@
       }
     }
   },
-  "formatter": { "enabled": false },
-  "files": { "ignore": ["node_modules", "dist", ".wrangler", "*.lock"] }
+  "formatter": {
+    "enabled": false
+  },
+  "files": {
+    "ignore": [
+      "node_modules",
+      "dist",
+      ".wrangler",
+      "*.lock"
+    ]
+  }
 }
