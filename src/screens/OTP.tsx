@@ -36,7 +36,7 @@ export function OTP() {
     return () => clearTimeout(t);
   }, [secs]);
 
-  // Auto-paste from clipboard when input is focused
+  // Clipboard auto-paste
   useEffect(() => {
     const handlePaste = (e: ClipboardEvent) => {
       const pasted = e.clipboardData?.getData("text") ?? "";
@@ -55,6 +55,7 @@ export function OTP() {
   const code     = digits.join("");
   const complete = code.length === LEN;
 
+  // biome-ignore lint/correctness/useExhaustiveDependencies: verification effect is intentionally gated by complete+verifying guards only; all inner state is consumed inside the async fn without driving re-runs
   useEffect(() => {
     if (!complete || verifying) return;
     setV(true);
@@ -67,7 +68,7 @@ export function OTP() {
         if (state.loginFlow) {
           result = await loginComplete({
             user_id: state.pendingUserId,
-            method:  state.method!,
+            method:  (state.method ?? "email") as "sms" | "email",
             pinId:   state.pinId ?? undefined,
             pin:     state.method === "sms" ? code : undefined,
             code:    state.method === "email" ? code : undefined,
@@ -79,7 +80,6 @@ export function OTP() {
           result = await completeRegistration(payload);
         }
         set({ token: result.token });
-        // Login flow: skip region onboarding. New registration: collect region.
         navigate(state.loginFlow ? "/success" : "/region");
       } catch (e) {
         const msg = e instanceof ApiError ? e.message : "Incorrect code. Try again.";
@@ -90,7 +90,6 @@ export function OTP() {
       }
     };
     run();
-  // biome-ignore lint/correctness/useExhaustiveDependencies: gated by complete+verifying
   }, [complete, verifying]);
 
   const setAt = (i: number, v: string) =>
@@ -126,7 +125,7 @@ export function OTP() {
     setErr(null);
     try {
       if (state.loginFlow) {
-        const res = await loginUsername(state.username!, state.appId ?? undefined);
+        const res = await loginUsername(state.username ?? "", state.appId ?? undefined);
         set({ pinId: res.pinId ?? null });
         toast.success("New code sent");
       } else if (state.method === "sms") {
@@ -173,22 +172,25 @@ export function OTP() {
         </p>
 
         <div className="otp-row mt-8">
-          {digits.map((d, i) => (
-            <input
-              key={i}
-              ref={el => { refs.current[i] = el; }}
-              className={boxClass(d)}
-              type="text"
-              inputMode="numeric"
-              pattern="\d*"
-              maxLength={1}
-              value={d}
-              disabled={verifying}
-              onChange={e => onChange(i, e.target.value)}
-              onKeyDown={e => onKeyDown(i, e)}
-              onFocus={e => e.target.select()}
-            />
-          ))}
+          {digits.map((d, i) => {
+            // biome-ignore lint/suspicious/noArrayIndexKey: OTP input slots are fixed-position and never reorder
+            return (
+              <input
+                key={i}
+                ref={el => { refs.current[i] = el; }}
+                className={boxClass(d)}
+                type="text"
+                inputMode="numeric"
+                pattern="\d*"
+                maxLength={1}
+                value={d}
+                disabled={verifying}
+                onChange={e => onChange(i, e.target.value)}
+                onKeyDown={e => onKeyDown(i, e)}
+                onFocus={e => e.target.select()}
+              />
+            );
+          })}
         </div>
 
         {verifying && (
