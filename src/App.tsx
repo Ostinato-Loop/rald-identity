@@ -1,5 +1,5 @@
 // RALD Identity — App.tsx
-// Routes: /, /verify, /otp, /success, /login, /qr-approve, /privacy, /dashboard
+// Routes: /, /verify, /otp, /region, /success, /login, /qr-approve, /privacy, /dashboard
 // ConsentBanner is rendered globally — shows on first visit across all routes.
 // LILCKY STUDIO LIMITED
 
@@ -8,6 +8,7 @@ import { Route, Routes, useSearchParams } from "react-router-dom";
 import { Username }    from "@/screens/Username";
 import { Verify }      from "@/screens/Verify";
 import { OTP }         from "@/screens/OTP";
+import { Region }      from "@/screens/Region";
 import { Success }     from "@/screens/Success";
 import { QrApprove }   from "@/screens/QrApprove";
 import { Login }       from "@/screens/Login";
@@ -34,12 +35,12 @@ export default function App() {
   return (
     <>
       <BootParams />
-      {/* First-visit privacy notice — renders as a bottom sheet on all pages */}
       <ConsentBanner />
       <Routes>
         <Route path="/"           element={<Username />} />
         <Route path="/verify"     element={<Verify />} />
         <Route path="/otp"        element={<OTP />} />
+        <Route path="/region"     element={<Region />} />
         <Route path="/success"    element={<Success />} />
         <Route path="/login"      element={<Login />} />
         <Route path="/qr-approve" element={<QrApprove />} />
