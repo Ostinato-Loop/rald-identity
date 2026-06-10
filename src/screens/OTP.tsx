@@ -3,7 +3,7 @@ import { useNavigate } from "react-router-dom";
 import { ArrowLeft, Loader2 } from "lucide-react";
 import { toast } from "sonner";
 import { Shell } from "@/components/Shell";
-import { completeRegistration, sendSMSOTP, sendEmailOTP, ApiError } from "@/lib/auth";
+import { completeRegistration, loginComplete, loginUsername, sendSMSOTP, sendEmailOTP, ApiError } from "@/lib/auth";
 import { useStore } from "@/lib/store";
 
 const LEN = 6;
@@ -19,8 +19,10 @@ export function OTP() {
   const refs = useRef<Array<HTMLInputElement | null>>([]);
 
   useEffect(() => {
-    if (!state.method || !state.pendingUserId) navigate("/verify");
-  }, [state.method, state.pendingUserId, navigate]);
+    if (!state.method || !state.pendingUserId) {
+      navigate(state.loginFlow ? "/login" : "/verify");
+    }
+  }, [state.method, state.pendingUserId, state.loginFlow, navigate]);
 
   useEffect(() => { refs.current[0]?.focus(); }, []);
 
@@ -41,10 +43,21 @@ export function OTP() {
     const run = async () => {
       try {
         if (!state.pendingUserId) throw new Error("Session lost. Please start over.");
-        const payload = state.method === "sms"
-          ? { pending_user_id: state.pendingUserId, method: "sms" as const, pinId: state.pinId ?? undefined, pin: code, phone: state.contact }
-          : { pending_user_id: state.pendingUserId, method: "email" as const, email: state.contact, code };
-        const result = await completeRegistration(payload);
+        let result;
+        if (state.loginFlow) {
+          result = await loginComplete({
+            user_id: state.pendingUserId,
+            method:  state.method!,
+            pinId:   state.pinId ?? undefined,
+            pin:     state.method === "sms" ? code : undefined,
+            code:    state.method === "email" ? code : undefined,
+          });
+        } else {
+          const payload = state.method === "sms"
+            ? { pending_user_id: state.pendingUserId, method: "sms" as const, pinId: state.pinId ?? undefined, pin: code, phone: state.contact }
+            : { pending_user_id: state.pendingUserId, method: "email" as const, email: state.contact, code };
+          result = await completeRegistration(payload);
+        }
         set({ token: result.token });
         navigate("/success");
       } catch (e) {
@@ -91,7 +104,11 @@ export function OTP() {
     setR(true);
     setErr(null);
     try {
-      if (state.method === "sms") {
+      if (state.loginFlow) {
+        const res = await loginUsername(state.username!, state.appId ?? undefined);
+        set({ pinId: res.pinId ?? null });
+        toast.success("New code sent");
+      } else if (state.method === "sms") {
         const res = await sendSMSOTP(state.contact);
         set({ pinId: res.pinId });
         toast.success("New code sent", { description: "Check your SMS." });
