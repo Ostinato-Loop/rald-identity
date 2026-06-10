@@ -145,3 +145,28 @@ export const webauthnLoginVerify = (
     "/auth/webauthn/login/verify",
     { username, credential },
   );
+
+// ── Username Login (return-user path) ─────────────────────────────────────────
+
+export interface LoginUsernameResult {
+  ok:              boolean;
+  pending_user_id: string;
+  method:          "sms" | "email";
+  pinId?:          string;
+  contact_hint:    string;
+}
+
+export const loginUsername = (username: string, appId?: string) =>
+  raldFetch<LoginUsernameResult>("POST", "/auth/login-username", {
+    username,
+    ...(appId ? { app_id: appId } : {}),
+  });
+
+export const loginComplete = (payload: {
+  user_id: string;
+  method:  "sms" | "email";
+  pinId?:  string;
+  pin?:    string;
+  code?:   string;
+}) =>
+  raldFetch<CompleteRegistrationResult>("POST", "/auth/login-username/complete", payload);
