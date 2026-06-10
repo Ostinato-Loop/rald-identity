@@ -3,7 +3,7 @@ import { useNavigate } from "react-router-dom";
 import { ArrowLeft, Loader2 } from "lucide-react";
 import { toast } from "sonner";
 import { Shell } from "@/components/Shell";
-import { completeRegistration, loginComplete, loginUsername, sendSMSOTP, sendEmailOTP, ApiError } from "@/lib/auth";
+import { completeRegistration, loginComplete, loginUsername, sendSMSOTP, sendEmailOTP, ApiError, type CompleteRegistrationResult } from "@/lib/auth";
 import { useStore } from "@/lib/store";
 
 const LEN = 6;
@@ -43,7 +43,7 @@ export function OTP() {
     const run = async () => {
       try {
         if (!state.pendingUserId) throw new Error("Session lost. Please start over.");
-        let result;
+        let result: CompleteRegistrationResult;
         if (state.loginFlow) {
           result = await loginComplete({
             user_id: state.pendingUserId,
