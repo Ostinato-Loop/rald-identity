@@ -2,12 +2,14 @@ import type { ReactNode } from "react";
 import { RaldWordmark } from "./Logo";
 
 interface ShellProps {
-  step: number;
+  step?: number;
   total?: number;
   children: ReactNode;
 }
 
 export function Shell({ step, total = 4, children }: ShellProps) {
+  const showProgress = step !== undefined && step > 0;
+
   return (
     <div className="shell">
       {/* Ambient aurora */}
@@ -39,14 +41,18 @@ export function Shell({ step, total = 4, children }: ShellProps) {
       <div className="shell-inner">
         <header className="shell-header">
           <RaldWordmark />
-          <span className="step-label">Step {step} of {total}</span>
+          {showProgress && (
+            <span className="step-label">Step {step} of {total}</span>
+          )}
         </header>
 
-        <div className="progress-bar" aria-hidden>
-          {Array.from({ length: total }).map((_, i) => (
-            <div key={i} className={`progress-pip${i < step ? " done" : ""}`} />
-          ))}
-        </div>
+        {showProgress && (
+          <div className="progress-bar" aria-hidden>
+            {Array.from({ length: total }).map((_, i) => (
+              <div key={i} className={`progress-pip${i < step ? " done" : ""}`} />
+            ))}
+          </div>
+        )}
 
         <main className="shell-main">{children}</main>
 

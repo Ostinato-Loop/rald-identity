@@ -1,9 +1,10 @@
 import react from "@vitejs/plugin-react";
 import { defineConfig } from "vite";
-import { resolve } from "path";
 
 export default defineConfig({
   plugins: [react()],
-  resolve: { alias: { "@": resolve(__dirname, "src") } },
+  resolve: {
+    alias: { "@": new URL("src", import.meta.url).pathname },
+  },
   server: { allowedHosts: true },
 });

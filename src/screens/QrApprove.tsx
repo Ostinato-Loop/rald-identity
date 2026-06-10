@@ -7,7 +7,7 @@
 import { useEffect, useState } from "react";
 import { useSearchParams, useNavigate } from "react-router-dom";
 import { Shell } from "@/components/Shell";
-import { Logo } from "@/components/Logo";
+import { RaldMark as Logo } from "@/components/Logo";
 import { qrScan, qrApprove, qrReject, getSession, ApiError } from "@/lib/auth";
 import { Monitor, Check, X, AlertTriangle, Loader2 } from "lucide-react";
 

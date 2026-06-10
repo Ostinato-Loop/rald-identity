@@ -1,7 +1,6 @@
 interface LogoProps { size?: number; }
 
 export function RaldMark({ size = 72 }: LogoProps) {
-  const r = size / 2;
   return (
     <svg
       width={size}
