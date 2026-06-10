@@ -1,5 +1,5 @@
 import { useEffect, useRef, useState } from "react";
-import { useNavigate } from "react-router-dom";
+import { Link, useNavigate } from "react-router-dom";
 import { AtSign, Check, CheckCircle2, Loader2, X } from "lucide-react";
 import { toast } from "sonner";
 import { Shell } from "@/components/Shell";
@@ -180,7 +180,7 @@ export function Username() {
 
         <p className="text-xs text-center text-muted mt-auto" style={{ paddingTop: 32 }}>
           Already have an identity?{" "}
-          <a href="/login" className="text-green" style={{ fontWeight: 700 }}>Sign in</a>
+          <Link to="/login" className="text-green" style={{ fontWeight: 700 }}>Sign in</Link>
         </p>
       </div>
     </Shell>
