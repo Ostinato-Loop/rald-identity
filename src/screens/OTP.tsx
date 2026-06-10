@@ -44,7 +44,8 @@ export function OTP() {
         const payload = state.method === "sms"
           ? { pending_user_id: state.pendingUserId, method: "sms" as const, pinId: state.pinId ?? undefined, pin: code, phone: state.contact }
           : { pending_user_id: state.pendingUserId, method: "email" as const, email: state.contact, code };
-        await completeRegistration(payload);
+        const result = await completeRegistration(payload);
+        set({ token: result.token });
         navigate("/success");
       } catch (e) {
         const msg = e instanceof ApiError ? e.message : "Incorrect code. Try again.";

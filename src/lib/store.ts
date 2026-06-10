@@ -10,6 +10,7 @@ export interface OnboardingState {
   redirectTo:    string | null;
   pendingUserId: string | null;
   pinId:         string | null;
+  token:         string | null;
 }
 
 const INITIAL: OnboardingState = {
@@ -20,6 +21,7 @@ const INITIAL: OnboardingState = {
   redirectTo:    null,
   pendingUserId: null,
   pinId:         null,
+  token:         null,
 };
 
 const KEY = "rald.identity.onboarding";
@@ -70,10 +72,36 @@ const APP_URLS: Record<string, string> = {
   dispatch:        "https://dispatch.rald.cloud",
 };
 
+/**
+ * Build the post-auth redirect URL.
+ *
+ * SSO-TOKEN-001: After a successful registration / auth flow, rald-identity must
+ * append the issued rald_token (and app_id) as query params so the calling app
+ * can exchange them for a session.  Without this the callback page in the calling
+ * app has no token to exchange and the user sees a blank/loading screen forever.
+ */
 export function resolveRedirectUrl(state: OnboardingState): string {
-  if (state.redirectTo) return state.redirectTo;
-  if (state.appId && APP_URLS[state.appId]) return APP_URLS[state.appId];
-  return "https://profiles.rald.cloud/dashboard";
+  let base: string;
+  if (state.redirectTo) {
+    base = state.redirectTo;
+  } else if (state.appId && APP_URLS[state.appId]) {
+    base = APP_URLS[state.appId];
+  } else {
+    base = "https://profiles.rald.cloud/dashboard";
+  }
+
+  if (!state.token) return base;
+
+  try {
+    const url = new URL(base);
+    url.searchParams.set("rald_token", state.token);
+    if (state.appId) url.searchParams.set("app_id", state.appId);
+    return url.toString();
+  } catch {
+    const sep = base.includes("?") ? "&" : "?";
+    const appPart = state.appId ? `&app_id=${encodeURIComponent(state.appId)}` : "";
+    return `${base}${sep}rald_token=${encodeURIComponent(state.token)}${appPart}`;
+  }
 }
 
 export const APP_LABELS: Record<string, string> = {
