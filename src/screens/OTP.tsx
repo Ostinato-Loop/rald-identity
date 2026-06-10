@@ -10,7 +10,8 @@ import {
 } from "@/lib/auth";
 import { useStore } from "@/lib/store";
 
-const LEN = 6;
+const LEN             = 6;
+const VERIFY_TIMEOUT  = 30_000;
 
 export function OTP() {
   const navigate            = useNavigate();
@@ -51,6 +52,18 @@ export function OTP() {
     document.addEventListener("paste", handlePaste);
     return () => document.removeEventListener("paste", handlePaste);
   }, []);
+
+  // Hard timeout: if verifying stays stuck for >30s, reset and show error
+  useEffect(() => {
+    if (!verifying) return;
+    const t = setTimeout(() => {
+      setV(false);
+      setDigits(Array(LEN).fill(""));
+      setErr("Verification timed out. Check your connection and try again.");
+      refs.current[0]?.focus();
+    }, VERIFY_TIMEOUT);
+    return () => clearTimeout(t);
+  }, [verifying]);
 
   const code     = digits.join("");
   const complete = code.length === LEN;
@@ -102,7 +115,7 @@ export function OTP() {
       const chars = v.slice(0, LEN - i).split("");
       setDigits(prev => {
         const n = [...prev];
-        chars.forEach((c, k) => { n[i + k] = c; });
+        for (let k = 0; k < chars.length; k++) { n[i + k] = chars[k]; }
         return n;
       });
       refs.current[Math.min(i + chars.length, LEN - 1)]?.focus();
