@@ -1,18 +1,19 @@
 import { useEffect, useState } from "react";
 import { useNavigate } from "react-router-dom";
-import { Check, Mail, ExternalLink } from "lucide-react";
+import { Check, Mail, ExternalLink, AlertTriangle } from "lucide-react";
 import { Shell } from "@/components/Shell";
 import { RaldMark } from "@/components/Logo";
 import { useStore } from "@/lib/store";
 import { resolveRedirectUrl, APP_LABELS } from "@/lib/store";
+import type React from "react";
 
 const PRODUCTS = [
-  { name: "Loop",        color: "var(--green)" },
-  { name: "Messenger",   color: "var(--gold)" },
-  { name: "PayRald",     color: "oklch(0.58 0.20 25)" },
-  { name: "RALD Mail",   color: "oklch(0.52 0.15 150)" },
+  { name: "Loop",          color: "var(--green)" },
+  { name: "Messenger",     color: "var(--gold)" },
+  { name: "PayRald",       color: "oklch(0.58 0.20 25)" },
+  { name: "RALD Mail",     color: "oklch(0.52 0.15 150)" },
   { name: "Loop Business", color: "var(--gold)" },
-  { name: "RALD AI",     color: "oklch(0.55 0.18 280)" },
+  { name: "RALD AI",       color: "oklch(0.55 0.18 280)" },
 ];
 
 export function Success() {
@@ -23,15 +24,22 @@ export function Success() {
   const appLabel        = state.appId ? (APP_LABELS[state.appId] ?? state.appId) : null;
   const reservedMail    = state.username ? `${state.username}@rald.me` : null;
 
+  // Guard: must have username to be on this screen
   useEffect(() => {
     if (!state.username) { navigate("/"); return; }
   }, [state.username, navigate]);
 
+  // Warn when token is missing — redirect will still fire but without token
+  const missingToken = !state.token;
+
+  // Auto-redirect countdown
   useEffect(() => {
     if (secs <= 0) { window.location.href = target; return; }
     const t = setTimeout(() => setSecs(s => s - 1), 1000);
     return () => clearTimeout(t);
   }, [secs, target]);
+
+  if (!state.username) return null;
 
   return (
     <Shell step={5}>
@@ -77,6 +85,27 @@ export function Success() {
         <p className="text-muted text-sm mt-3">
           Your RALD Identity is ready. You now have access to the entire ecosystem.
         </p>
+
+        {/* Token-missing warning */}
+        {missingToken && (
+          <div
+            style={{
+              display: "flex",
+              alignItems: "center",
+              gap: 8,
+              marginTop: 16,
+              padding: "10px 14px",
+              background: "oklch(0.58 0.20 25 / 0.10)",
+              borderRadius: 10,
+              border: "1px solid oklch(0.58 0.20 25 / 0.25)",
+            }}
+          >
+            <AlertTriangle size={15} color="oklch(0.58 0.20 25)" />
+            <span className="text-xs" style={{ color: "oklch(0.58 0.20 25)", fontWeight: 600 }}>
+              Session token missing — the destination app may require you to sign in again.
+            </span>
+          </div>
+        )}
 
         {/* Reserved mail badge */}
         {reservedMail && (
