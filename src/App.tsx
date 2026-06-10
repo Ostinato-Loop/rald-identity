@@ -5,6 +5,7 @@ import { Verify }     from "@/screens/Verify";
 import { OTP }        from "@/screens/OTP";
 import { Success }    from "@/screens/Success";
 import { QrApprove }  from "@/screens/QrApprove";
+import { Login }      from "@/screens/Login";
 import { setState }   from "@/lib/store";
 
 function BootParams() {
@@ -31,6 +32,7 @@ export default function App() {
         <Route path="/verify"     element={<Verify />} />
         <Route path="/otp"        element={<OTP />} />
         <Route path="/success"    element={<Success />} />
+        <Route path="/login"      element={<Login />} />
         <Route path="/qr-approve" element={<QrApprove />} />
         <Route path="*"           element={<Username />} />
       </Routes>
