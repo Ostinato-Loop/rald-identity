@@ -186,7 +186,6 @@ export function Privacy() {
   const token    = store.token;
 
   const [consent, setConsent]         = useState<ConsentPrefs>(() => loadConsent());
-  const [loading, setLoading]         = useState(false);
   const [stats, setStats]             = useState<{ connected_apps: number; active_sessions: number } | null>(null);
   const [saving, setSaving]           = useState(false);
   const [exporting, setExporting]     = useState(false);
@@ -199,12 +198,10 @@ export function Privacy() {
   // Load privacy overview from backend (only if authenticated)
   const loadStats = useCallback(async () => {
     if (!token) return;
-    setLoading(true);
     try {
       const data = await fetchPrivacyMe(token);
       setStats({ connected_apps: data.connected_apps.length, active_sessions: data.active_sessions });
     } catch { /* silently fail — stats are cosmetic */ }
-    finally { setLoading(false); }
   }, [token]);
 
   useEffect(() => { loadStats(); }, [loadStats]);
