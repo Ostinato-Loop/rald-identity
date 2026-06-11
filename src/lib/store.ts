@@ -3,40 +3,44 @@ import { useState, useEffect } from "react";
   export type OnboardingMethod = "sms" | "email" | null;
 
   export interface OnboardingState {
-    username:       string;
-    method:         OnboardingMethod;
-    contact:        string;
-    appId:          string | null;
-    redirectTo:     string | null;
-    pendingUserId:  string | null;
-    pinId:          string | null;
-    token:          string | null;
-    loginFlow:      boolean;
-    country:        string | null;
-    regionState:    string | null;
-    needsUsername:  boolean;
-    migrationMode:  boolean;
+    username:           string;
+    method:             OnboardingMethod;
+    contact:            string;
+    appId:              string | null;
+    redirectTo:         string | null;
+    pendingUserId:      string | null;
+    pinId:              string | null;
+    token:              string | null;
+    loginFlow:          boolean;
+    country:            string | null;
+    regionState:        string | null;
+    needsUsername:      boolean;
+    migrationMode:      boolean;
     // Phase 6: smart-login
-    smartLoginFlow: boolean;
-    identifier:     string | null;
+    smartLoginFlow:     boolean;
+    identifier:         string | null;
+    // Email OTP: sessionToken JWT returned by /auth/send-login-email-otp
+    // Required by /auth/register-username/complete for email verification
+    emailSessionToken:  string | null;
   }
 
   const INITIAL: OnboardingState = {
-    username:       "",
-    method:         null,
-    contact:        "",
-    appId:          null,
-    redirectTo:     null,
-    pendingUserId:  null,
-    pinId:          null,
-    token:          null,
-    loginFlow:      false,
-    country:        null,
-    regionState:    null,
-    needsUsername:  false,
-    migrationMode:  false,
-    smartLoginFlow: false,
-    identifier:     null,
+    username:           "",
+    method:             null,
+    contact:            "",
+    appId:              null,
+    redirectTo:         null,
+    pendingUserId:      null,
+    pinId:              null,
+    token:              null,
+    loginFlow:          false,
+    country:            null,
+    regionState:        null,
+    needsUsername:      false,
+    migrationMode:      false,
+    smartLoginFlow:     false,
+    identifier:         null,
+    emailSessionToken:  null,
   };
 
   const KEY = "rald.identity.onboarding";
@@ -68,19 +72,20 @@ import { useState, useEffect } from "react";
   /** Clear flow state (keep appId + redirectTo, wipe auth progress) */
   export function resetFlow() {
     setState({
-      username:       "",
-      method:         null,
-      contact:        "",
-      pendingUserId:  null,
-      pinId:          null,
-      token:          null,
-      loginFlow:      false,
-      country:        null,
-      regionState:    null,
-      needsUsername:  false,
-      migrationMode:  false,
-      smartLoginFlow: false,
-      identifier:     null,
+      username:           "",
+      method:             null,
+      contact:            "",
+      pendingUserId:      null,
+      pinId:              null,
+      token:              null,
+      loginFlow:          false,
+      country:            null,
+      regionState:        null,
+      needsUsername:      false,
+      migrationMode:      false,
+      smartLoginFlow:     false,
+      identifier:         null,
+      emailSessionToken:  null,
     });
   }
 
