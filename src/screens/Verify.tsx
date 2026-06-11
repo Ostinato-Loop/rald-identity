@@ -1,6 +1,6 @@
 import { useEffect, useRef, useState } from "react";
 import { useNavigate } from "react-router-dom";
-import { ArrowLeft, ArrowRight, Mail, MessageSquare } from "lucide-react";
+import { ArrowLeft, ArrowRight, Mail, MessageSquare, AlertTriangle } from "lucide-react";
 import { toast } from "sonner";
 import { Shell } from "@/components/Shell";
 import { sendSMSOTP, sendEmailOTP, ApiError } from "@/lib/auth";
@@ -12,10 +12,11 @@ export function Verify() {
   const [method, setMethod] = useState<"sms" | "email" | null>(
     state.method === "sms" || state.method === "email" ? state.method : null,
   );
-  const [contact, setContact] = useState(state.contact || "");
-  const [sending, setSending] = useState(false);
-  const [err, setErr]         = useState<string | null>(null);
-  const contactRef            = useRef<HTMLInputElement>(null);
+  const [contact, setContact]         = useState(state.contact || "");
+  const [sending, setSending]         = useState(false);
+  const [err, setErr]                 = useState<string | null>(null);
+  const [smsUnavailable, setSmsUnavail] = useState(false);
+  const contactRef                    = useRef<HTMLInputElement>(null);
 
   useEffect(() => {
     if (!state.username || !state.pendingUserId) navigate("/");
@@ -25,6 +26,7 @@ export function Verify() {
     if (method) {
       setContact("");
       setErr(null);
+      if (method === "email") setSmsUnavail(false);
       setTimeout(() => contactRef.current?.focus(), 80);
     }
   }, [method]);
@@ -53,9 +55,17 @@ export function Verify() {
       }
       navigate("/otp");
     } catch (e) {
-      const msg = e instanceof ApiError ? e.message : "Failed to send code. Try again.";
-      setErr(msg);
-      toast.error("Couldn't send code", { description: msg });
+      const isSmsDown =
+        e instanceof ApiError &&
+        (e.status === 503 || e.message.toLowerCase().includes("sms"));
+      if (isSmsDown && method === "sms") {
+        setSmsUnavail(true);
+        setErr("SMS is temporarily unavailable. Switch to email to continue.");
+      } else {
+        const msg = e instanceof ApiError ? e.message : "Failed to send code. Try again.";
+        setErr(msg);
+        toast.error("Couldn't send code", { description: msg });
+      }
     } finally {
       setSending(false);
     }
@@ -80,28 +90,81 @@ export function Verify() {
         <div className="method-cards mt-6">
           <button
             type="button"
-            className={`method-card${method === "sms" ? " active-green" : ""}`}
-            onClick={() => setMethod("sms")}
+            className={`method-card${method === "sms" ? " active-green" : ""}${smsUnavailable ? " method-card-disabled" : ""}`}
+            onClick={() => !smsUnavailable && setMethod("sms")}
+            disabled={smsUnavailable}
+            title={smsUnavailable ? "SMS is temporarily unavailable" : undefined}
           >
             <span className="method-icon"><MessageSquare size={20} /></span>
             <span>
-              <div className="method-title">SMS</div>
-              <div className="method-desc">6-digit code to your phone</div>
+              <div className="method-title">
+                SMS
+                {smsUnavailable && (
+                  <span style={{ marginLeft: 6, fontSize: "0.65rem", color: "var(--red, #ef4444)", fontWeight: 600, textTransform: "uppercase", letterSpacing: "0.05em" }}>
+                    Unavailable
+                  </span>
+                )}
+              </div>
+              <div className="method-desc">
+                {smsUnavailable ? "Currently unavailable" : "6-digit code to your phone"}
+              </div>
             </span>
           </button>
 
           <button
             type="button"
-            className={`method-card${method === "email" ? " active-gold" : ""}`}
+            className={`method-card${method === "email" ? " active-gold" : ""}${smsUnavailable ? " method-card-recommended" : ""}`}
             onClick={() => setMethod("email")}
           >
             <span className="method-icon"><Mail size={20} /></span>
             <span>
-              <div className="method-title">Email</div>
+              <div className="method-title">
+                Email
+                {smsUnavailable && (
+                  <span style={{ marginLeft: 6, fontSize: "0.65rem", color: "var(--gold, #f59e0b)", fontWeight: 600, textTransform: "uppercase", letterSpacing: "0.05em" }}>
+                    Recommended
+                  </span>
+                )}
+              </div>
               <div className="method-desc">6-digit code to your inbox</div>
             </span>
           </button>
         </div>
+
+        {/* SMS unavailable banner — shown after a failed SMS send */}
+        {smsUnavailable && method === "sms" && (
+          <div
+            className="animate-in"
+            style={{
+              marginTop: 16,
+              padding: "12px 14px",
+              borderRadius: 10,
+              background: "rgba(239,68,68,0.08)",
+              border: "1px solid rgba(239,68,68,0.25)",
+              display: "flex",
+              gap: 10,
+              alignItems: "flex-start",
+            }}
+          >
+            <AlertTriangle size={16} style={{ color: "var(--red, #ef4444)", flexShrink: 0, marginTop: 2 }} />
+            <div style={{ flex: 1 }}>
+              <p style={{ fontSize: "0.8rem", fontWeight: 600, color: "var(--red, #ef4444)", margin: "0 0 4px" }}>
+                SMS is temporarily unavailable
+              </p>
+              <p style={{ fontSize: "0.75rem", color: "var(--muted)", margin: 0, lineHeight: 1.5 }}>
+                Switch to email to complete your verification. Your @username is still reserved.
+              </p>
+              <button
+                type="button"
+                className="btn btn-primary"
+                style={{ marginTop: 10, padding: "8px 16px", fontSize: "0.8rem" }}
+                onClick={() => setMethod("email")}
+              >
+                <Mail size={14} /> Switch to email
+              </button>
+            </div>
+          </div>
+        )}
 
         {method && (
           <div className="mt-5 animate-in">
@@ -111,7 +174,7 @@ export function Verify() {
             <input
               ref={contactRef}
               id="contact-input"
-              className={`input-plain${err ? " input-plain-err" : ""}`}
+              className={`input-plain${err && !smsUnavailable ? " input-plain-err" : ""}`}
               type={method === "sms" ? "tel" : "email"}
               inputMode={method === "sms" ? "tel" : "email"}
               autoComplete={method === "sms" ? "tel" : "email"}
@@ -120,7 +183,7 @@ export function Verify() {
               onChange={e => { setContact(e.target.value); setErr(null); }}
               onKeyDown={e => { if (e.key === "Enter") handleSend(); }}
             />
-            {err && <p className="field-error">{err}</p>}
+            {err && !smsUnavailable && <p className="field-error">{err}</p>}
           </div>
         )}
 
