@@ -106,7 +106,12 @@ export function OTP() {
         setV(false);
         setDigits(Array(LEN).fill(""));
         refs.current[0]?.focus();
-        setErr(msg);
+        // Sanitize: never show raw 5xx server text to the user
+        const friendly =
+          e instanceof ApiError && e.status >= 500
+            ? "Verification failed — server issue. Go back and try a different method."
+            : msg;
+        setErr(friendly);
       }
     };
     run();
@@ -167,7 +172,20 @@ export function OTP() {
       setDigits(Array(LEN).fill(""));
       refs.current[0]?.focus();
     } catch (e) {
-      toast.error("Couldn't resend", { description: e instanceof ApiError ? e.message : "Try again." });
+      const isSmsDown =
+        e instanceof ApiError &&
+        (e.status === 503 || e.message.toLowerCase().includes("sms") || e.message.toLowerCase().includes("unavailable"));
+      if (isSmsDown && state.method === "sms") {
+        toast.error("SMS unavailable", {
+          description: "Go back and switch to email verification.",
+          action: {
+            label: "Switch to email",
+            onClick: () => navigate(state.loginFlow ? "/login" : "/verify"),
+          },
+        });
+      } else {
+        toast.error("Couldn't resend", { description: e instanceof ApiError ? e.message : "Try again." });
+      }
     } finally {
       setR(false);
     }
