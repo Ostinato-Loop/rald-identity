@@ -12,7 +12,7 @@ import { RaldMark } from "@/components/Logo";
 import {
   checkUsername, claimUsernameForMigration, ApiError,
 } from "@/lib/auth";
-import { useStore, resolveRedirectUrl } from "@/lib/store";
+import { useStore } from "@/lib/store";
 
 type Status = "idle" | "checking" | "available" | "taken" | "invalid";
 
