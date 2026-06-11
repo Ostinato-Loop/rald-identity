@@ -185,7 +185,7 @@ export const sendSMSOTP = (phone: string) =>
   raldFetch<SendSMSOTPResult>("POST", "/auth/send-otp", { phone });
 
 export const sendEmailOTP = (email: string) =>
-  raldFetch<{ ok: boolean }>("POST", "/auth/send-login-email-otp", { email });
+  raldFetch<{ sessionToken: string; message: string }>("POST", "/auth/send-login-email-otp", { email });
 
 export const completeRegistration = (payload: {
   pending_user_id: string;
@@ -195,6 +195,7 @@ export const completeRegistration = (payload: {
   phone?: string;
   email?: string;
   code?: string;
+  sessionToken?: string | null;
 }) =>
   raldFetch<CompleteRegistrationResult>(
     "POST",
