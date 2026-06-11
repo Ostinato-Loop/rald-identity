@@ -1,165 +1,91 @@
 // RALD Identity — Dashboard
-// Route: /dashboard
-// Shown when a user lands on profiles.rald.cloud directly (no app_id / redirect_to)
-// after a successful registration or login flow.
-// LILCKY STUDIO LIMITED
+  // Route: /dashboard
+  // Smart router: validates session then forwards to app.rald.cloud (RALD ecosystem hub).
+  // Users should NOT be left on profiles.rald.cloud after auth — they belong on app.rald.cloud.
+  // LILCKY STUDIO LIMITED
 
-import type React from "react";
-import { useEffect, useState } from "react";
-import { useNavigate } from "react-router-dom";
-import { Shell }       from "@/components/Shell";
-import { RaldMark }    from "@/components/Logo";
-import { useStore, setState, resetFlow } from "@/lib/store";
-import { getSession, logout }  from "@/lib/auth";
-import { ExternalLink, Shield, Loader2, LogOut } from "lucide-react";
+  import { useEffect } from "react";
+  import { useNavigate } from "react-router-dom";
+  import { Shell }       from "@/components/Shell";
+  import { RaldMark }    from "@/components/Logo";
+  import { useStore, setState, resetFlow } from "@/lib/store";
+  import { getSession }  from "@/lib/auth";
+  import { Loader2 }     from "lucide-react";
 
-const APPS = [
-  { id: "loop",      label: "Loop",      desc: "Social feed",       url: "https://loop.rald.cloud",      color: "var(--green)" },
-  { id: "messenger", label: "Messenger", desc: "Private messages",  url: "https://messenger.rald.cloud",  color: "var(--gold)"  },
-  { id: "pay",       label: "Pay",       desc: "Send money",        url: "https://pay.rald.cloud",        color: "var(--red)"   },
-] as const;
+  const APP_RALD_CLOUD = "https://app.rald.cloud";
 
-export function Dashboard() {
-  const navigate             = useNavigate();
-  const [store]              = useStore();
-  const [validating, setVal] = useState(true);
-  const [loggingOut, setLO]  = useState(false);
+  export function Dashboard() {
+    const navigate    = useNavigate();
+    const [store]     = useStore();
 
-  // Validate server session on mount — clears stale in-memory tokens
-  useEffect(() => {
-    let mounted = true;
-    setVal(true);
-    getSession().then(result => {
-      if (!mounted) return;
-      setVal(false);
-      if (!result?.ok) {
-        setState({ token: null });
+    useEffect(() => {
+      let mounted = true;
+
+      // If no in-memory token, send to login immediately
+      if (!store.token) {
         navigate("/login", { replace: true });
+        return;
       }
-    });
-    return () => { mounted = false; };
-  }, [navigate]);
 
-  // Belt-and-suspenders: if no in-memory token while session check runs, redirect
-  useEffect(() => {
-    if (!store.token && !validating) navigate("/login", { replace: true });
-  }, [store.token, validating, navigate]);
+      // Validate the session then forward to app.rald.cloud with SSO token
+      getSession().then(result => {
+        if (!mounted) return;
+        if (!result?.ok) {
+          // Session invalid — clear and redirect to login
+          setState({ token: null });
+          resetFlow();
+          navigate("/login", { replace: true });
+          return;
+        }
+        // Session valid — forward to RALD ecosystem hub with token
+        const token = store.token;
+        const destination = token
+          ? `${APP_RALD_CLOUD}?rald_token=${encodeURIComponent(token)}&app_id=rald-app`
+          : APP_RALD_CLOUD;
+        window.location.replace(destination);
+      });
 
-  const handleLogout = async () => {
-    if (loggingOut) return;
-    setLO(true);
-    try {
-      // Best-effort server revocation — always proceed with local logout
-      if (store.token) await logout(store.token);
-    } finally {
-      resetFlow();
-      setState({ token: null });
-      navigate("/login", { replace: true });
-    }
-  };
+      return () => { mounted = false; };
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+    }, []);
 
-  if (validating) {
+    // Show a minimal loading screen while validating
     return (
       <Shell>
         <div
           style={{
             flex: 1,
             display: "flex",
+            flexDirection: "column",
             alignItems: "center",
             justifyContent: "center",
-            gap: 12,
+            gap: 16,
             color: "var(--muted)",
           }}
         >
-          <Loader2 size={20} style={{ animation: "spin 0.7s linear infinite" }} />
-          <span className="text-sm">Verifying session…</span>
+          <div style={{ position: "relative" }}>
+            <RaldMark size={56} />
+            <div
+              aria-hidden
+              style={{
+                position: "absolute",
+                inset: -8,
+                borderRadius: 20,
+                border: "2px solid oklch(0.52 0.15 150 / 0.2)",
+                animation: "ping 1.5s cubic-bezier(0,0,0.2,1) infinite",
+              }}
+            />
+          </div>
+          <div style={{ display: "flex", alignItems: "center", gap: 8 }}>
+            <Loader2 size={16} style={{ animation: "spin 0.7s linear infinite" }} />
+            <span className="text-sm">Taking you to RALD…</span>
+          </div>
+          <p className="text-xs text-muted" style={{ marginTop: 4, textAlign: "center", maxWidth: 240 }}>
+            Your RALD identity is verified.
+            <br />Redirecting to the ecosystem hub.
+          </p>
         </div>
       </Shell>
     );
   }
-
-  if (!store.token) return null;
-
-  return (
-    <Shell>
-      <div className="dashboard">
-
-        {/* Identity header */}
-        <div className="dashboard-header">
-          <div className="dashboard-logo">
-            <RaldMark size={56} />
-          </div>
-          <div className="dashboard-id">
-            {store.username
-              ? <span className="dashboard-username">@{store.username}</span>
-              : <span className="dashboard-username text-muted">Welcome to RALD</span>
-            }
-            <p className="text-muted text-xs mt-2" style={{ marginTop: 4 }}>
-              Your identity is active across the RALD ecosystem.
-            </p>
-          </div>
-        </div>
-
-        {/* App links */}
-        <div className="mt-8">
-          <p className="text-xs" style={{ fontWeight: 700, color: "var(--muted)", letterSpacing: "0.06em", textTransform: "uppercase", marginBottom: 12 }}>
-            RALD Apps
-          </p>
-          <div className="dashboard-apps">
-            {APPS.map(app => (
-              <a
-                key={app.id}
-                href={app.url}
-                className="dashboard-app-card"
-                style={{ "--app-color": app.color } as React.CSSProperties}
-              >
-                <div className="dashboard-app-dot" />
-                <div>
-                  <p className="dashboard-app-label">{app.label}</p>
-                  <p className="dashboard-app-desc">{app.desc}</p>
-                </div>
-                <ExternalLink size={14} color="var(--muted)" style={{ marginLeft: "auto", flexShrink: 0 }} />
-              </a>
-            ))}
-          </div>
-        </div>
-
-        {/* Privacy shortcut */}
-        <div className="mt-6">
-          <button
-            type="button"
-            className="dashboard-privacy-row"
-            onClick={() => navigate("/privacy")}
-          >
-            <Shield size={16} color="var(--green)" />
-            <span>Privacy &amp; Trust settings</span>
-            <span className="text-xs text-muted" style={{ marginLeft: "auto" }}>→</span>
-          </button>
-        </div>
-
-        {/* Logout */}
-        <div className="mt-3">
-          <button
-            type="button"
-            className="dashboard-privacy-row"
-            onClick={handleLogout}
-            disabled={loggingOut}
-            style={{ opacity: loggingOut ? 0.6 : 1 }}
-          >
-            {loggingOut
-              ? <Loader2 size={16} color="var(--muted)" style={{ animation: "spin 0.7s linear infinite" }} />
-              : <LogOut size={16} color="var(--muted)" />
-            }
-            <span style={{ color: "var(--muted)" }}>
-              {loggingOut ? "Signing out…" : "Sign out"}
-            </span>
-          </button>
-        </div>
-
-        <p className="shell-footer mt-auto" style={{ marginTop: "auto", paddingTop: 32 }}>
-          Built in Africa · Works on any network
-        </p>
-      </div>
-    </Shell>
-  );
-}
+  
