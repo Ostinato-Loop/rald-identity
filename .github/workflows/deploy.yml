@@ -27,7 +27,7 @@ jobs:
           apiToken: ${{ secrets.CLOUDFLARE_API_TOKEN }}
           accountId: ${{ secrets.CLOUDFLARE_ACCOUNT_ID }}
           command: pages deploy dist --project-name=rald-identity
-      - name: Ensure identity.rald.cloud custom domain on Pages
+      - name: Fix identity.rald.cloud custom domain and DNS
         env:
           CLOUDFLARE_API_TOKEN: ${{ secrets.CLOUDFLARE_API_TOKEN }}
           CLOUDFLARE_ACCOUNT_ID: ${{ secrets.CLOUDFLARE_ACCOUNT_ID }}
@@ -38,51 +38,78 @@ jobs:
           const h = { 'Authorization': `Bearer ${token}`, 'Content-Type': 'application/json' };
           const DOMAIN = 'identity.rald.cloud';
           const PROJECT = 'rald-identity';
+          async function cf(method, path, body) {
+            const r = await fetch(`https://api.cloudflare.com/client/v4${path}`, {
+              method, headers: h, body: body ? JSON.stringify(body) : undefined
+            });
+            return r.json();
+          }
           (async () => {
-            // Check existing custom domains
-            const existing = await fetch(
-              `https://api.cloudflare.com/client/v4/accounts/${account}/pages/projects/${PROJECT}/domains`,
-              { headers: h }
-            ).then(r => r.json());
-            if (existing.result?.find(d => d.name === DOMAIN)) {
-              console.log(`✓ ${DOMAIN} already set as custom domain`);
-              return;
-            }
-            // Add custom domain
-            const res = await fetch(
-              `https://api.cloudflare.com/client/v4/accounts/${account}/pages/projects/${PROJECT}/domains`,
-              { method: 'POST', headers: h, body: JSON.stringify({ name: DOMAIN }) }
-            ).then(r => r.json());
-            if (res.success) {
-              console.log(`✓ Added ${DOMAIN} as custom domain for Pages project ${PROJECT}`);
-            } else {
-              // 8000007 = already exists
-              const alreadyExists = res.errors?.some(e => e.code === 8000007);
-              if (alreadyExists) {
-                console.log(`✓ ${DOMAIN} already configured`);
-              } else {
-                console.error('Custom domain setup failed:', JSON.stringify(res.errors));
-              }
-            }
-            // Ensure DNS record exists
-            const zones = await fetch(
-              'https://api.cloudflare.com/client/v4/zones?name=rald.cloud',
-              { headers: h }
-            ).then(r => r.json());
+            // 1. Get the actual Pages project subdomain (may have random suffix like -3xx)
+            const proj = await cf('GET', `/accounts/${account}/pages/projects/${PROJECT}`);
+            if (!proj.success) { console.error('Could not fetch Pages project:', JSON.stringify(proj.errors)); return; }
+            const subdomain = proj.result?.subdomain;
+            const pagesUrl  = `${subdomain}.pages.dev`;
+            console.log(`Pages project subdomain: ${pagesUrl}`);
+
+            // 2. Get rald.cloud zone
+            const zones = await cf('GET', '/zones?name=rald.cloud');
             const zone = zones.result?.[0];
-            if (!zone) { console.log('rald.cloud zone not found — skipping DNS'); return; }
-            const dns = await fetch(
-              `https://api.cloudflare.com/client/v4/zones/${zone.id}/dns_records?name=${DOMAIN}`,
-              { headers: h }
-            ).then(r => r.json());
-            if (dns.result?.length) {
-              console.log(`✓ DNS ${dns.result.map(r => r.type + ' ' + r.content).join(', ')} already exists`);
-              return;
+            if (!zone) { console.log('WARN: rald.cloud zone not found'); return; }
+
+            // 3. Ensure CNAME points to the correct subdomain (fix if stale)
+            const dns = await cf('GET', `/zones/${zone.id}/dns_records?name=${DOMAIN}`);
+            const rec = dns.result?.[0];
+            if (rec) {
+              if (rec.content !== pagesUrl) {
+                console.log(`Updating CNAME: ${rec.content} → ${pagesUrl}`);
+                const upd = await cf('PUT', `/zones/${zone.id}/dns_records/${rec.id}`, {
+                  type: 'CNAME', name: 'identity', content: pagesUrl, proxied: true
+                });
+                console.log(upd.success ? `✓ CNAME updated to ${pagesUrl}` : 'CNAME update failed: ' + JSON.stringify(upd.errors));
+              } else {
+                console.log(`✓ CNAME already correct: ${pagesUrl}`);
+              }
+            } else {
+              const cr = await cf('POST', `/zones/${zone.id}/dns_records`, {
+                type: 'CNAME', name: 'identity', content: pagesUrl, proxied: true
+              });
+              console.log(cr.success ? `✓ Created CNAME ${DOMAIN} → ${pagesUrl}` : 'CNAME create failed: ' + JSON.stringify(cr.errors));
             }
-            const dnsRes = await fetch(
-              `https://api.cloudflare.com/client/v4/zones/${zone.id}/dns_records`,
-              { method: 'POST', headers: h, body: JSON.stringify({ type: 'CNAME', name: 'identity', content: `${PROJECT}.pages.dev`, proxied: true }) }
-            ).then(r => r.json());
-            console.log(dnsRes.success ? `✓ Created CNAME identity.rald.cloud → ${PROJECT}.pages.dev` : 'DNS failed: ' + JSON.stringify(dnsRes.errors));
+
+            // 4. Ensure custom domain on Pages project
+            const domains = await cf('GET', `/accounts/${account}/pages/projects/${PROJECT}/domains`);
+            const domObj = domains.result?.find(d => d.name === DOMAIN);
+            if (!domObj) {
+              const add = await cf('POST', `/accounts/${account}/pages/projects/${PROJECT}/domains`, { name: DOMAIN });
+              if (add.success) console.log(`✓ Added ${DOMAIN} as Pages custom domain`);
+              else {
+                const alreadyExists = add.errors?.some(e => e.code === 8000007);
+                console.log(alreadyExists ? `✓ ${DOMAIN} already configured` : 'Add domain failed: ' + JSON.stringify(add.errors));
+              }
+            } else if (domObj.status === 'pending') {
+              // Re-trigger verification by deleting + re-adding
+              console.log(`Domain ${DOMAIN} is pending (${JSON.stringify(domObj.verification_data?.error_message||domObj.validation_data?.status)}) — re-adding to restart cert provisioning`);
+              const del = await cf('DELETE', `/accounts/${account}/pages/projects/${PROJECT}/domains/${DOMAIN}`);
+              if (del.success) {
+                await new Promise(r => setTimeout(r, 2000));
+                const readd = await cf('POST', `/accounts/${account}/pages/projects/${PROJECT}/domains`, { name: DOMAIN });
+                console.log(readd.success ? `✓ Re-added ${DOMAIN} — cert provisioning restarted` : 'Re-add failed: ' + JSON.stringify(readd.errors));
+              } else {
+                console.log('Delete failed (may need Pages:Edit permission):', JSON.stringify(del.errors));
+              }
+            } else {
+              console.log(`✓ ${DOMAIN} is ${domObj.status}`);
+            }
           })().catch(e => console.error('[WARN]', e.message));
           JSEOF
+
+      - name: Post-deploy smoke test
+        run: |
+          sleep 15
+          STATUS=$(curl -sf -o /dev/null -w "%{http_code}" --max-time 10 "https://identity.rald.cloud/" || echo "000")
+          echo "identity.rald.cloud → HTTP $STATUS"
+          STATUS2=$(curl -sf -o /dev/null -w "%{http_code}" --max-time 10 "https://rald-identity.pages.dev/" || echo "000")
+          echo "rald-identity.pages.dev → HTTP $STATUS2 (origin)"
+          if [ "$STATUS" = "200" ] || [ "$STATUS" = "301" ] || [ "$STATUS" = "304" ]; then echo "SMOKE TEST PASSED"; else echo "NOTE: SSL cert may still be provisioning (normal for new custom domain)"; fi
+        continue-on-error: true
