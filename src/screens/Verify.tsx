@@ -49,8 +49,8 @@ export function Verify() {
         toast.success("Code sent", { description: "Check your SMS for a 6-digit code." });
       } else {
         const email = contact.trim().toLowerCase();
-        await sendEmailOTP(email);
-        set({ method, contact: email, pinId: null });
+        const res = await sendEmailOTP(email);
+        set({ method, contact: email, pinId: null, emailSessionToken: res.sessionToken ?? null });
         toast.success("Code sent", { description: `Check your inbox at ${email}.` });
       }
       navigate("/otp");
