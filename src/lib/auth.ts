@@ -1,4 +1,5 @@
 // RALD Auth Client — browser-side calls to auth.rald.cloud
+// P4 additions (2026-06-11): claimUsernameForMigration, getIdentityStatus
 // LILCKY STUDIO LIMITED
 
 const AUTH =
@@ -43,7 +44,6 @@ async function raldFetch<T>(
     try {
       res = await attemptFetch();
     } catch (networkErr) {
-      // One automatic retry after RETRY_DELAY_MS for transient network failures
       if (ctrl.signal.aborted) {
         throw new ApiError(0, "Request timed out. Check your connection and try again.");
       }
@@ -53,13 +53,11 @@ async function raldFetch<T>(
 
     clearTimeout(tid);
 
-    // Rate-limited — respect Retry-After if present
     if (res.status === 429) {
       const retryAfter = Number.parseInt(res.headers.get("Retry-After") ?? "30", 10);
       throw new ApiError(429, `Too many requests. Please wait ${retryAfter}s and try again.`);
     }
 
-    // 5xx — one retry
     if (res.status >= 500) {
       await new Promise(r => setTimeout(r, RETRY_DELAY_MS));
       const retry = await attemptFetch();
@@ -94,6 +92,11 @@ export interface UsernameCheckResult {
   available: boolean;
   username:  string;
   reason?:   string;
+  reservations?: {
+    mail:      string;
+    domain:    string;
+    workspace: string;
+  };
 }
 
 export interface RegisterUsernameResult {
@@ -109,12 +112,14 @@ export interface SendSMSOTPResult {
 }
 
 export interface AuthUser {
-  id:               string;
-  username?:        string;
-  email?:           string;
-  name?:            string;
-  role?:            string;
-  rald_internal_id?: string;
+  id:                      string;
+  username?:               string;
+  email?:                  string;
+  name?:                   string;
+  role?:                   string;
+  rald_internal_id?:       string;
+  reserved_email_address?: string;
+  trust_level?:            string;
 }
 
 export interface CompleteRegistrationResult {
@@ -126,6 +131,39 @@ export interface CompleteRegistrationResult {
 export interface SessionResult {
   ok:   boolean;
   user: AuthUser;
+}
+
+// P4: identity status returned from migration endpoint
+export interface IdentityStatus {
+  user_id:          string;
+  username:         string | null;
+  rald_internal_id: string | null;
+  reserved_email_address: string | null;
+  trust_level:      string;
+  trust_score:      number;
+  identity_complete: boolean;
+  needs_username:   boolean;
+  completeness: {
+    has_username:       boolean;
+    has_verified_phone: boolean;
+    has_verified_email: boolean;
+    has_region:         boolean;
+    has_reserved_mail:  boolean;
+    has_profile:        boolean;
+    has_trust_profile:  boolean;
+  };
+  required_actions: Array<{
+    action:   string;
+    priority: number;
+    label:    string;
+    url:      string;
+  }>;
+  smart_fill: {
+    country:      string | null;
+    region:       string | null;
+    region_state: string | null;
+    display_name: string | null;
+  };
 }
 
 // ── Core auth ─────────────────────────────────────────────────────────────────
@@ -166,13 +204,45 @@ export const completeRegistration = (payload: {
 /** Save profile data (region, etc.) — fire-and-forget, never blocks auth flow. */
 export const saveProfile = (
   token: string,
-  data: { country?: string; region_state?: string },
+  data: { country?: string; region?: string; region_state?: string; display_name?: string },
 ): Promise<unknown> =>
   raldFetch<{ ok: boolean }>("PATCH", "/profiles/me", data, token).catch(() => null);
 
 /** Get the current session from the worker (validates cookie). */
 export const getSession = () =>
   raldFetch<SessionResult>("GET", "/session").catch(() => null);
+
+// P4: Get full identity status (used after login to check migration needs)
+export const getIdentityStatus = (token: string) =>
+  raldFetch<IdentityStatus>("GET", "/migration/identity-status", undefined, token).catch(() => null);
+
+// P4: Claim username for users without one (migration flow)
+export const claimUsernameForMigration = (token: string, username: string) =>
+  raldFetch<{
+    ok: boolean;
+    username: string;
+    reserved_email_address: string;
+    reserved_domain: string;
+    ecosystem_unlocked: boolean;
+    identity_complete: boolean;
+  }>("POST", "/migration/claim-username", { username }, token);
+
+// P2: Check username availability (returns reservation preview)
+export const checkUsernameAvailability = (username: string) =>
+  raldFetch<UsernameCheckResult>(
+    "GET",
+    `/username/check/${encodeURIComponent(username)}`,
+  );
+
+// P2: Change username (policy: 30 days)
+export const changeUsername = (token: string, newUsername: string, reason?: string) =>
+  raldFetch<{
+    ok: boolean;
+    old_username: string;
+    username: string;
+    reserved_mail: string;
+    next_change_allowed: string;
+  }>("POST", "/username/change", { new_username: newUsername, reason }, token);
 
 // ── QR Code Login ─────────────────────────────────────────────────────────────
 
@@ -212,6 +282,7 @@ export interface LoginUsernameResult {
   method:          "sms" | "email";
   pinId?:          string;
   contact_hint:    string;
+  needs_username?: boolean;
 }
 
 export const loginUsername = (username: string, appId?: string) =>
@@ -220,6 +291,18 @@ export const loginUsername = (username: string, appId?: string) =>
     ...(appId ? { app_id: appId } : {}),
   });
 
+export interface LoginCompleteResult {
+  ok:             boolean;
+  token:          string;
+  user:           AuthUser;
+  needs_username?: boolean;
+  migration?: {
+    required:  boolean;
+    message:   string;
+    claim_url: string;
+  } | null;
+}
+
 export const loginComplete = (payload: {
   user_id: string;
   method:  "sms" | "email";
@@ -227,4 +310,4 @@ export const loginComplete = (payload: {
   pin?:    string;
   code?:   string;
 }) =>
-  raldFetch<CompleteRegistrationResult>("POST", "/auth/login-username/complete", payload);
+  raldFetch<LoginCompleteResult>("POST", "/auth/login-username/complete", payload);

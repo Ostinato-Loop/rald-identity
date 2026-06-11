@@ -14,6 +14,9 @@ export interface OnboardingState {
   loginFlow:     boolean;
   country:       string | null;
   regionState:   string | null;
+  // P4: migration state — user needs to claim a username after legacy login
+  needsUsername: boolean;
+  migrationMode: boolean;
 }
 
 const INITIAL: OnboardingState = {
@@ -28,6 +31,8 @@ const INITIAL: OnboardingState = {
   loginFlow:     false,
   country:       null,
   regionState:   null,
+  needsUsername: false,
+  migrationMode: false,
 };
 
 const KEY = "rald.identity.onboarding";
@@ -68,6 +73,8 @@ export function resetFlow() {
     loginFlow:     false,
     country:       null,
     regionState:   null,
+    needsUsername: false,
+    migrationMode: false,
   });
 }
 
@@ -82,8 +89,6 @@ export function useStore(): [OnboardingState, typeof setState] {
 }
 
 // ── Open-redirect protection ───────────────────────────────────────────────────
-// Only URLs within *.rald.cloud (https only) are accepted as redirect targets.
-
 const ALLOWED_ORIGINS = new Set([
   "https://loop.rald.cloud",
   "https://messenger.rald.cloud",
@@ -102,7 +107,6 @@ export function validateRedirectUrl(raw: string): string | null {
     const url = new URL(raw);
     if (url.protocol !== "https:") return null;
     if (ALLOWED_ORIGINS.has(url.origin)) return raw;
-    // Accept any *.rald.cloud subdomain
     if (url.hostname.endsWith(".rald.cloud")) return raw;
     return null;
   } catch {
@@ -124,11 +128,7 @@ const APP_URLS: Record<string, string> = {
 
 /**
  * Build the post-auth redirect URL.
- *
- * SSO-TOKEN-001: After a successful registration / auth flow, rald-identity must
- * append the issued rald_token (and app_id) as query params so the calling app
- * can exchange them for a session.  Without this the callback page in the calling
- * app has no token to exchange and the user sees a blank/loading screen forever.
+ * SSO-TOKEN-001: appends rald_token + app_id so calling apps can exchange for session.
  */
 export function resolveRedirectUrl(state: OnboardingState): string {
   let base: string;
