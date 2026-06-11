@@ -311,3 +311,31 @@ export const loginComplete = (payload: {
   code?:   string;
 }) =>
   raldFetch<LoginCompleteResult>("POST", "/auth/login-username/complete", payload);
+
+// ── Smart Login (Phase 6) ─────────────────────────────────────────────────────
+// Unified endpoint: auto-detects username / email / phone
+
+export interface SmartLoginResult {
+  ok:              boolean;
+  pending_user_id: string;
+  method:          "sms" | "email";
+  identifier_type: "username" | "email" | "phone";
+  pinId?:          string;
+  contact_hint:    string;
+  needs_username?: boolean;
+}
+
+export const smartLogin = (identifier: string, appId?: string) =>
+  raldFetch<SmartLoginResult>("POST", "/auth/smart-login", {
+    identifier,
+    ...(appId ? { app_id: appId } : {}),
+  });
+
+export const smartLoginComplete = (payload: {
+  user_id: string;
+  method:  "sms" | "email";
+  pinId?:  string;
+  pin?:    string;
+  code?:   string;
+}) =>
+  raldFetch<LoginCompleteResult>("POST", "/auth/smart-login/complete", payload);

@@ -1,39 +1,107 @@
+// RALD Identity — Smart Login Screen (Phase 6)
+// Single input field: auto-detects username / email / phone number.
+// Routes to OTP screen via /auth/smart-login (new unified endpoint).
+// Falls back to /auth/login-username for pure @username flow.
+//
+// RALD AUTH EMERGENCY STABILIZATION SPRINT — Phase 6
+// LILCKY STUDIO LIMITED
+
 import { useEffect, useRef, useState } from "react";
 import { Link, useNavigate } from "react-router-dom";
-import { AtSign, ArrowRight, Loader2 } from "lucide-react";
+import { AtSign, Phone, Mail, ArrowRight, Loader2 } from "lucide-react";
 import { Shell } from "@/components/Shell";
 import { RaldMark } from "@/components/Logo";
-import { loginUsername, ApiError } from "@/lib/auth";
+import { smartLogin, loginUsername, ApiError } from "@/lib/auth";
 import { useStore } from "@/lib/store";
 
-export function Login() {
-  const navigate        = useNavigate();
-  const [state, set]    = useStore();
-  const [value, setValue]   = useState(state.username || "");
-  const [loading, setLoad]  = useState(false);
-  const [error,  setError]  = useState<string | null>(null);
-  const inputRef            = useRef<HTMLInputElement>(null);
+// ── Detection helpers (mirrors backend logic) ──────────────────────────────────
 
-  // Focus input on mount without triggering a11y/noAutofocus rule
+type IdentifierType = "username" | "email" | "phone";
+
+function detectType(raw: string): IdentifierType {
+  const t = raw.trim();
+  const digits = t.replace(/[\s\-\(\)\+]/g, "");
+  if (/^\+?[\d\s\-\(\)]+$/.test(t) && digits.length >= 7 && digits.length <= 15) return "phone";
+  if (/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(t)) return "email";
+  return "username";
+}
+
+function getPlaceholder(type: IdentifierType): string {
+  if (type === "email")  return "you@example.com";
+  if (type === "phone")  return "+234 800 000 0000";
+  return "yourname";
+}
+
+function getIcon(type: IdentifierType) {
+  if (type === "email") return <Mail size={18} color="var(--muted)" style={{ flexShrink: 0 }} />;
+  if (type === "phone") return <Phone size={18} color="var(--muted)" style={{ flexShrink: 0 }} />;
+  return <AtSign size={18} color="var(--muted)" style={{ flexShrink: 0 }} />;
+}
+
+function getLabel(type: IdentifierType): string {
+  if (type === "email") return "Email address";
+  if (type === "phone") return "Phone number";
+  return "Your username";
+}
+
+function getHint(type: IdentifierType): string {
+  if (type === "email") return "We'll send a code to this email.";
+  if (type === "phone") return "We'll send a code via SMS.";
+  return "Enter your @username, email, or phone number.";
+}
+
+// ── Login Screen ──────────────────────────────────────────────────────────────
+
+export function Login() {
+  const navigate       = useNavigate();
+  const [state, set]   = useStore();
+  const [value, setValue]  = useState(state.username || "");
+  const [idType, setType]  = useState<IdentifierType>("username");
+  const [loading, setLoad] = useState(false);
+  const [error, setError]  = useState<string | null>(null);
+  const inputRef           = useRef<HTMLInputElement>(null);
+
   useEffect(() => { inputRef.current?.focus(); }, []);
+
+  // Live-detect type as user types
+  useEffect(() => {
+    if (value.trim()) setType(detectType(value));
+    else setType("username");
+  }, [value]);
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
-    const username = value.trim().toLowerCase().replace(/^@/, "");
-    if (!username) { setError("Enter your username to continue."); return; }
+    const raw = value.trim();
+    if (!raw) { setError("Enter your username, email, or phone to continue."); return; }
 
     setLoad(true);
     setError(null);
+
     try {
-      const res = await loginUsername(username, state.appId ?? undefined);
-      set({
-        username,
-        pendingUserId: res.pending_user_id,
-        method:        res.method,
-        pinId:         res.pinId ?? null,
-        contact:       res.contact_hint,
-        loginFlow:     true,
-      });
+      if (idType === "username") {
+        // Pure username path — use existing endpoint for backward compat
+        const username = raw.toLowerCase().replace(/^@/, "");
+        const res = await loginUsername(username, state.appId ?? undefined);
+        set({
+          username,
+          pendingUserId: res.pending_user_id,
+          method:        res.method,
+          pinId:         res.pinId ?? null,
+          contact:       res.contact_hint,
+          loginFlow:     true,
+        });
+      } else {
+        // Email or phone — use smart-login endpoint
+        const res = await smartLogin(raw, state.appId ?? undefined);
+        set({
+          username:      res.identifier_type === "username" ? raw.toLowerCase().replace(/^@/, "") : "",
+          pendingUserId: res.pending_user_id,
+          method:        res.method,
+          pinId:         res.pinId ?? null,
+          contact:       res.contact_hint,
+          loginFlow:     true,
+        });
+      }
       navigate("/otp");
     } catch (err) {
       setError(err instanceof ApiError ? err.message : "Something went wrong. Try again.");
@@ -52,41 +120,57 @@ export function Login() {
         </div>
 
         <h1 className="text-center">Welcome back</h1>
-        <p className="text-center text-muted text-sm" style={{ maxWidth: 280, margin: "12px auto 0", lineHeight: 1.6 }}>
-          Sign in to your{" "}
-          <span style={{ color: "var(--text)", fontWeight: 700 }}>RALD Identity</span>
-          {" "}and return to the ecosystem.
+        <p className="text-center text-muted text-sm" style={{ maxWidth: 300, margin: "12px auto 0", lineHeight: 1.6 }}>
+          Sign in with your{" "}
+          <span style={{ color: "var(--text)", fontWeight: 700 }}>
+            @username, email, or phone
+          </span>
+          .
         </p>
 
         <form style={{ marginTop: 32, display: "flex", flexDirection: "column" }} onSubmit={handleSubmit}>
-          <label htmlFor="login-username" className="text-sm" style={{ fontWeight: 600, marginBottom: 8 }}>
-            Your username
+          <label htmlFor="login-identifier" className="text-sm" style={{ fontWeight: 600, marginBottom: 8 }}>
+            {getLabel(idType)}
           </label>
 
           <div className={`input-row${error ? " state-err" : ""}`}>
-            <AtSign size={18} color="var(--muted)" style={{ flexShrink: 0 }} />
+            {getIcon(idType)}
             <input
               ref={inputRef}
-              id="login-username"
-              type="text"
-              autoComplete="username"
+              id="login-identifier"
+              type={idType === "email" ? "email" : idType === "phone" ? "tel" : "text"}
+              autoComplete={idType === "email" ? "email" : idType === "phone" ? "tel" : "username"}
               autoCapitalize="none"
               autoCorrect="off"
               spellCheck={false}
-              inputMode="text"
-              placeholder="yourname"
+              inputMode={idType === "phone" ? "tel" : idType === "email" ? "email" : "text"}
+              placeholder={getPlaceholder(idType)}
               value={value}
               onChange={e => {
-                setValue(e.target.value.replace(/[^a-z0-9_]/gi, "").toLowerCase());
+                // For username: only allow valid chars; for email/phone: free input
+                const v = e.target.value;
+                if (!v.includes("@") && !v.match(/^\+?[\d\s\-\(\)]+$/)) {
+                  // Looks like a username — enforce character set
+                  setValue(v.replace(/[^a-z0-9_@\.\+\-\s\(\)]/gi, "").toLowerCase());
+                } else {
+                  setValue(v);
+                }
                 setError(null);
               }}
               disabled={loading}
-              maxLength={20}
+              maxLength={80}
             />
             {loading && (
               <Loader2 size={20} color="var(--muted)" style={{ flexShrink: 0, animation: "spin 0.7s linear infinite" }} />
             )}
           </div>
+
+          {/* Live type hint */}
+          {hasValue && !error && (
+            <p className="text-xs text-muted" style={{ marginTop: 6 }}>
+              {getHint(idType)}
+            </p>
+          )}
 
           {error && <p className="field-error">{error}</p>}
 
@@ -102,6 +186,21 @@ export function Login() {
             )}
           </button>
         </form>
+
+        {/* Divider */}
+        <div style={{ display: "flex", alignItems: "center", gap: 12, margin: "24px 0 0" }}>
+          <div style={{ flex: 1, height: 1, background: "var(--border)" }} />
+          <span className="text-xs text-muted">or</span>
+          <div style={{ flex: 1, height: 1, background: "var(--border)" }} />
+        </div>
+
+        {/* QR login link */}
+        <p className="text-xs text-center text-muted" style={{ marginTop: 16 }}>
+          On your phone?{" "}
+          <Link to="/qr-approve" style={{ color: "var(--green)", fontWeight: 600 }}>
+            Use QR code login
+          </Link>
+        </p>
 
         <p className="text-xs text-center text-muted mt-auto" style={{ paddingTop: 32 }}>
           New to RALD?{" "}
