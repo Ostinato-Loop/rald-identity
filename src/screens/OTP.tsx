@@ -4,7 +4,8 @@ import { ArrowLeft, Loader2 } from "lucide-react";
 import { toast } from "sonner";
 import { Shell } from "@/components/Shell";
 import {
-  completeRegistration, loginComplete, loginUsername,
+  completeRegistration, loginComplete, smartLoginComplete,
+  loginUsername, smartLogin,
   sendSMSOTP, sendEmailOTP, ApiError,
   type CompleteRegistrationResult,
 } from "@/lib/auth";
@@ -68,7 +69,7 @@ export function OTP() {
   const code     = digits.join("");
   const complete = code.length === LEN;
 
-  // biome-ignore lint/correctness/useExhaustiveDependencies: verification effect is intentionally gated by complete+verifying guards only; all inner state is consumed inside the async fn without driving re-runs
+  // biome-ignore lint/correctness/useExhaustiveDependencies: verification effect is intentionally gated by complete+verifying guards only
   useEffect(() => {
     if (!complete || verifying) return;
     setV(true);
@@ -78,20 +79,26 @@ export function OTP() {
       try {
         if (!state.pendingUserId) throw new Error("Session lost. Please start over.");
         let result: CompleteRegistrationResult;
+
         if (state.loginFlow) {
-          result = await loginComplete({
+          const payload = {
             user_id: state.pendingUserId,
             method:  (state.method ?? "email") as "sms" | "email",
             pinId:   state.pinId ?? undefined,
             pin:     state.method === "sms" ? code : undefined,
             code:    state.method === "email" ? code : undefined,
-          });
+          };
+          // Phase 6: smart-login (email/phone) uses a different completion endpoint
+          result = state.smartLoginFlow
+            ? await smartLoginComplete(payload)
+            : await loginComplete(payload);
         } else {
           const payload = state.method === "sms"
             ? { pending_user_id: state.pendingUserId, method: "sms" as const, pinId: state.pinId ?? undefined, pin: code, phone: state.contact }
             : { pending_user_id: state.pendingUserId, method: "email" as const, email: state.contact, code };
           result = await completeRegistration(payload);
         }
+
         set({ token: result.token });
         navigate(state.loginFlow ? "/success" : "/region");
       } catch (e) {
@@ -138,17 +145,24 @@ export function OTP() {
     setErr(null);
     try {
       if (state.loginFlow) {
-        const res = await loginUsername(state.username ?? "", state.appId ?? undefined);
-        set({ pinId: res.pinId ?? null });
-        toast.success("New code sent");
+        if (state.smartLoginFlow && state.identifier) {
+          // Phase 6: resend via smart-login (email or phone)
+          const res = await smartLogin(state.identifier, state.appId ?? undefined);
+          set({ pinId: res.pinId ?? null });
+        } else {
+          // Classic username login resend
+          const res = await loginUsername(state.username ?? "", state.appId ?? undefined);
+          set({ pinId: res.pinId ?? null });
+        }
       } else if (state.method === "sms") {
         const res = await sendSMSOTP(state.contact);
         set({ pinId: res.pinId });
-        toast.success("New code sent", { description: "Check your SMS." });
       } else {
         await sendEmailOTP(state.contact);
-        toast.success("New code sent", { description: "Check your inbox." });
       }
+      toast.success("New code sent", {
+        description: state.method === "sms" ? "Check your SMS." : "Check your inbox.",
+      });
       setSecs(45);
       setDigits(Array(LEN).fill(""));
       refs.current[0]?.focus();

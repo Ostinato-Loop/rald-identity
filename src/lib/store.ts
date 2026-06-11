@@ -3,36 +3,42 @@ import { useState, useEffect } from "react";
 export type OnboardingMethod = "sms" | "email" | null;
 
 export interface OnboardingState {
-  username:      string;
-  method:        OnboardingMethod;
-  contact:       string;
-  appId:         string | null;
-  redirectTo:    string | null;
-  pendingUserId: string | null;
-  pinId:         string | null;
-  token:         string | null;
-  loginFlow:     boolean;
-  country:       string | null;
-  regionState:   string | null;
+  username:       string;
+  method:         OnboardingMethod;
+  contact:        string;
+  appId:          string | null;
+  redirectTo:     string | null;
+  pendingUserId:  string | null;
+  pinId:          string | null;
+  token:          string | null;
+  loginFlow:      boolean;
+  country:        string | null;
+  regionState:    string | null;
   // P4: migration state — user needs to claim a username after legacy login
-  needsUsername: boolean;
-  migrationMode: boolean;
+  needsUsername:  boolean;
+  migrationMode:  boolean;
+  // Phase 6: smart-login — tracks whether completion needs /auth/smart-login/complete
+  smartLoginFlow: boolean;
+  // Phase 6: original identifier (email/phone) for smart-login resend
+  identifier:     string | null;
 }
 
 const INITIAL: OnboardingState = {
-  username:      "",
-  method:        null,
-  contact:       "",
-  appId:         null,
-  redirectTo:    null,
-  pendingUserId: null,
-  pinId:         null,
-  token:         null,
-  loginFlow:     false,
-  country:       null,
-  regionState:   null,
-  needsUsername: false,
-  migrationMode: false,
+  username:       "",
+  method:         null,
+  contact:        "",
+  appId:          null,
+  redirectTo:     null,
+  pendingUserId:  null,
+  pinId:          null,
+  token:          null,
+  loginFlow:      false,
+  country:        null,
+  regionState:    null,
+  needsUsername:  false,
+  migrationMode:  false,
+  smartLoginFlow: false,
+  identifier:     null,
 };
 
 const KEY = "rald.identity.onboarding";
@@ -64,17 +70,19 @@ export function setState(patch: Partial<OnboardingState>) {
 /** Clear flow state (keep appId + redirectTo, wipe auth progress) */
 export function resetFlow() {
   setState({
-    username:      "",
-    method:        null,
-    contact:       "",
-    pendingUserId: null,
-    pinId:         null,
-    token:         null,
-    loginFlow:     false,
-    country:       null,
-    regionState:   null,
-    needsUsername: false,
-    migrationMode: false,
+    username:       "",
+    method:         null,
+    contact:        "",
+    pendingUserId:  null,
+    pinId:          null,
+    token:          null,
+    loginFlow:      false,
+    country:        null,
+    regionState:    null,
+    needsUsername:  false,
+    migrationMode:  false,
+    smartLoginFlow: false,
+    identifier:     null,
   });
 }
 

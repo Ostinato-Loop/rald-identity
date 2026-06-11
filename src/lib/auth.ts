@@ -1,5 +1,6 @@
 // RALD Auth Client — browser-side calls to auth.rald.cloud
 // P4 additions (2026-06-11): claimUsernameForMigration, getIdentityStatus
+// Phase 6 additions (2026-06-11): smartLogin, smartLoginComplete, logout
 // LILCKY STUDIO LIMITED
 
 const AUTH =
@@ -339,3 +340,12 @@ export const smartLoginComplete = (payload: {
   code?:   string;
 }) =>
   raldFetch<LoginCompleteResult>("POST", "/auth/smart-login/complete", payload);
+
+// ── Logout ─────────────────────────────────────────────────────────────────────
+// Revokes the current session on the server, clears the HttpOnly cookie.
+// Always resolves (never throws) — safe to fire-and-forget.
+
+export const logout = (token: string): Promise<void> =>
+  raldFetch<{ ok: boolean }>("POST", "/logout", undefined, token)
+    .then(() => undefined)
+    .catch(() => undefined);

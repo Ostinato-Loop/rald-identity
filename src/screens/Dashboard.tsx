@@ -9,9 +9,9 @@ import { useEffect, useState } from "react";
 import { useNavigate } from "react-router-dom";
 import { Shell }       from "@/components/Shell";
 import { RaldMark }    from "@/components/Logo";
-import { useStore, setState } from "@/lib/store";
-import { getSession }  from "@/lib/auth";
-import { ExternalLink, Shield, Loader2 } from "lucide-react";
+import { useStore, setState, resetFlow } from "@/lib/store";
+import { getSession, logout }  from "@/lib/auth";
+import { ExternalLink, Shield, Loader2, LogOut } from "lucide-react";
 
 const APPS = [
   { id: "loop",      label: "Loop",      desc: "Social feed",       url: "https://loop.rald.cloud",      color: "var(--green)" },
@@ -23,6 +23,7 @@ export function Dashboard() {
   const navigate             = useNavigate();
   const [store]              = useStore();
   const [validating, setVal] = useState(true);
+  const [loggingOut, setLO]  = useState(false);
 
   // Validate server session on mount — clears stale in-memory tokens
   useEffect(() => {
@@ -32,7 +33,6 @@ export function Dashboard() {
       if (!mounted) return;
       setVal(false);
       if (!result?.ok) {
-        // Server session expired or invalid — wipe token and redirect to login
         setState({ token: null });
         navigate("/login", { replace: true });
       }
@@ -44,6 +44,19 @@ export function Dashboard() {
   useEffect(() => {
     if (!store.token && !validating) navigate("/login", { replace: true });
   }, [store.token, validating, navigate]);
+
+  const handleLogout = async () => {
+    if (loggingOut) return;
+    setLO(true);
+    try {
+      // Best-effort server revocation — always proceed with local logout
+      if (store.token) await logout(store.token);
+    } finally {
+      resetFlow();
+      setState({ token: null });
+      navigate("/login", { replace: true });
+    }
+  };
 
   if (validating) {
     return (
@@ -121,6 +134,25 @@ export function Dashboard() {
             <Shield size={16} color="var(--green)" />
             <span>Privacy &amp; Trust settings</span>
             <span className="text-xs text-muted" style={{ marginLeft: "auto" }}>→</span>
+          </button>
+        </div>
+
+        {/* Logout */}
+        <div className="mt-3">
+          <button
+            type="button"
+            className="dashboard-privacy-row"
+            onClick={handleLogout}
+            disabled={loggingOut}
+            style={{ opacity: loggingOut ? 0.6 : 1 }}
+          >
+            {loggingOut
+              ? <Loader2 size={16} color="var(--muted)" style={{ animation: "spin 0.7s linear infinite" }} />
+              : <LogOut size={16} color="var(--muted)" />
+            }
+            <span style={{ color: "var(--muted)" }}>
+              {loggingOut ? "Signing out…" : "Sign out"}
+            </span>
           </button>
         </div>
 

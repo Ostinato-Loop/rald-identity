@@ -84,22 +84,26 @@ export function Login() {
         const res = await loginUsername(username, state.appId ?? undefined);
         set({
           username,
-          pendingUserId: res.pending_user_id,
-          method:        res.method,
-          pinId:         res.pinId ?? null,
-          contact:       res.contact_hint,
-          loginFlow:     true,
+          pendingUserId:  res.pending_user_id,
+          method:         res.method,
+          pinId:          res.pinId ?? null,
+          contact:        res.contact_hint,
+          loginFlow:      true,
+          smartLoginFlow: false,
+          identifier:     null,
         });
       } else {
-        // Email or phone — use smart-login endpoint
+        // Email or phone — use smart-login endpoint; OTP screen uses /auth/smart-login/complete
         const res = await smartLogin(raw, state.appId ?? undefined);
         set({
-          username:      res.identifier_type === "username" ? raw.toLowerCase().replace(/^@/, "") : "",
-          pendingUserId: res.pending_user_id,
-          method:        res.method,
-          pinId:         res.pinId ?? null,
-          contact:       res.contact_hint,
-          loginFlow:     true,
+          username:       "",
+          pendingUserId:  res.pending_user_id,
+          method:         res.method,
+          pinId:          res.pinId ?? null,
+          contact:        res.contact_hint,
+          loginFlow:      true,
+          smartLoginFlow: true,
+          identifier:     raw,
         });
       }
       navigate("/otp");
@@ -147,10 +151,8 @@ export function Login() {
               placeholder={getPlaceholder(idType)}
               value={value}
               onChange={e => {
-                // For username: only allow valid chars; for email/phone: free input
                 const v = e.target.value;
                 if (!v.includes("@") && !v.match(/^\+?[\d\s\-\(\)]+$/)) {
-                  // Looks like a username — enforce character set
                   setValue(v.replace(/[^a-z0-9_@\.\+\-\s\(\)]/gi, "").toLowerCase());
                 } else {
                   setValue(v);
