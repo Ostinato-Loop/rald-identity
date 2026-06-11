@@ -95,7 +95,7 @@ export function OTP() {
         } else {
           const payload = state.method === "sms"
             ? { pending_user_id: state.pendingUserId, method: "sms" as const, pinId: state.pinId ?? undefined, pin: code, phone: state.contact }
-            : { pending_user_id: state.pendingUserId, method: "email" as const, email: state.contact, code };
+            : { pending_user_id: state.pendingUserId, method: "email" as const, email: state.contact, code, sessionToken: state.emailSessionToken ?? undefined };
           result = await completeRegistration(payload);
         }
 
