@@ -43,7 +43,22 @@ import { useState, useEffect } from "react";
     emailSessionToken:  null,
   };
 
-  const KEY = "rald.identity.onboarding";
+  const KEY            = "rald.identity.onboarding";
+  const LAST_ID_KEY    = "rald.last.identifier";
+
+  // ── localStorage helpers (non-sensitive: last login identifier only) ──────────
+
+  export function getLastIdentifier(): string {
+    try { return localStorage.getItem(LAST_ID_KEY) ?? ""; } catch { return ""; }
+  }
+
+  export function setLastIdentifier(value: string) {
+    try {
+      if (value) { localStorage.setItem(LAST_ID_KEY, value); }
+    } catch { /* noop */ }
+  }
+
+  // ── sessionStorage helpers (sensitive flow state) ──────────────────────────────
 
   function persist(s: OnboardingState) {
     try { sessionStorage.setItem(KEY, JSON.stringify(s)); } catch { /* noop */ }
@@ -179,4 +194,3 @@ import { useState, useEffect } from "react";
     dispatch:        "Dispatch",
     "rald-app":      "RALD",
   };
-  
