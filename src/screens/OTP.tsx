@@ -94,23 +94,42 @@ export function OTP() {
             ? await smartLoginComplete(payload)
             : await loginComplete(payload);
 
-          // FIX: after login, persist username from server response so the
-          // Success screen guard doesn't bounce email/phone-login users back to /.
-          // state.username may be "" when user logged in with email or phone.
+          const loginResult = result as LoginCompleteResult;
+
+          // FIX: persist username from server response so Success.tsx guard
+          // doesn't bounce email/phone-login users back to registration.
+          // state.username may be "" when user logged in via email or phone.
           const resolvedUsername =
-            (result as LoginCompleteResult).user?.username ??
-            state.username ??
-            "";
-          set({ token: result.token, username: resolvedUsername });
-        } else {
-          const payload = state.method === "sms"
-            ? { pending_user_id: state.pendingUserId, method: "sms" as const, pinId: state.pinId ?? undefined, pin: code, phone: state.contact }
-            : { pending_user_id: state.pendingUserId, method: "email" as const, email: state.contact, code, sessionToken: state.emailSessionToken ?? undefined };
-          result = await completeRegistration(payload);
-          set({ token: result.token });
+            loginResult.user?.username ?? state.username ?? "";
+
+          // FIX: track needs_username so migration users get routed to /claim-username
+          // instead of landing on /success with no username and broken ecosystem access.
+          const needsUsername = loginResult.needs_username ?? false;
+
+          set({
+            token:        loginResult.token,
+            username:     resolvedUsername,
+            needsUsername,
+            migrationMode: needsUsername,
+          });
+
+          // Route: migration users without a username → claim-username; everyone else → success
+          if (needsUsername && !resolvedUsername) {
+            navigate("/claim-username");
+          } else {
+            navigate("/success");
+          }
+          return;
         }
 
-        navigate(state.loginFlow ? "/success" : "/region");
+        // Registration OTP path
+        const payload = state.method === "sms"
+          ? { pending_user_id: state.pendingUserId, method: "sms" as const, pinId: state.pinId ?? undefined, pin: code, phone: state.contact }
+          : { pending_user_id: state.pendingUserId, method: "email" as const, email: state.contact, code, sessionToken: state.emailSessionToken ?? undefined };
+        result = await completeRegistration(payload);
+        set({ token: result.token });
+        navigate("/region");
+
       } catch (e) {
         const msg = e instanceof ApiError ? e.message : "Incorrect code. Try again.";
         setV(false);
