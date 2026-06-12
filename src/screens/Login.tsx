@@ -3,6 +3,9 @@
 // Routes to OTP screen via /auth/smart-login (new unified endpoint).
 // Falls back to /auth/login-username for pure @username flow.
 //
+// FIX: persist last-used identifier to localStorage so returning users
+// don't have to retype their username/email/phone on every visit.
+//
 // RALD AUTH EMERGENCY STABILIZATION SPRINT — Phase 6
 // LILCKY STUDIO LIMITED
 
@@ -12,7 +15,7 @@ import { AtSign, Phone, Mail, ArrowRight, Loader2 } from "lucide-react";
 import { Shell } from "@/components/Shell";
 import { RaldMark } from "@/components/Logo";
 import { smartLogin, loginUsername, ApiError } from "@/lib/auth";
-import { useStore } from "@/lib/store";
+import { useStore, getLastIdentifier, setLastIdentifier } from "@/lib/store";
 
 // ── Detection helpers (mirrors backend logic) ──────────────────────────────────
 
@@ -55,8 +58,13 @@ function getHint(type: IdentifierType): string {
 export function Login() {
   const navigate       = useNavigate();
   const [state, set]   = useStore();
-  const [value, setValue]  = useState(state.username || "");
-  const [idType, setType]  = useState<IdentifierType>("username");
+
+  // Seed initial value: prefer in-session username, then localStorage last identifier
+  const [value, setValue]  = useState(() => state.username || getLastIdentifier() || "");
+  const [idType, setType]  = useState<IdentifierType>(() => {
+    const seed = state.username || getLastIdentifier() || "";
+    return seed ? detectType(seed) : "username";
+  });
   const [loading, setLoad] = useState(false);
   const [error, setError]  = useState<string | null>(null);
   const inputRef           = useRef<HTMLInputElement>(null);
@@ -82,6 +90,8 @@ export function Login() {
         // Pure username path — use existing endpoint for backward compat
         const username = raw.toLowerCase().replace(/^@/, "");
         const res = await loginUsername(username, state.appId ?? undefined);
+        // Persist last-used identifier so returning users don't retype
+        setLastIdentifier(username);
         set({
           username,
           pendingUserId:  res.pending_user_id,
@@ -95,6 +105,8 @@ export function Login() {
       } else {
         // Email or phone — use smart-login endpoint; OTP screen uses /auth/smart-login/complete
         const res = await smartLogin(raw, state.appId ?? undefined);
+        // Persist last-used identifier so returning users don't retype
+        setLastIdentifier(raw);
         set({
           username:       "",
           pendingUserId:  res.pending_user_id,
