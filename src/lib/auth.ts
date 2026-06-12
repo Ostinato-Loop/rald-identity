@@ -130,7 +130,7 @@ export interface CompleteRegistrationResult {
 }
 
 export interface SessionResult {
-  ok:   boolean;
+  valid: boolean;
   user: AuthUser;
 }
 
