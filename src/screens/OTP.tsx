@@ -8,6 +8,7 @@ import {
   loginUsername, smartLogin,
   sendSMSOTP, sendEmailOTP, ApiError,
   type CompleteRegistrationResult,
+  type LoginCompleteResult,
 } from "@/lib/auth";
 import { useStore } from "@/lib/store";
 
@@ -78,7 +79,7 @@ export function OTP() {
     const run = async () => {
       try {
         if (!state.pendingUserId) throw new Error("Session lost. Please start over.");
-        let result: CompleteRegistrationResult;
+        let result: CompleteRegistrationResult | LoginCompleteResult;
 
         if (state.loginFlow) {
           const payload = {
@@ -92,14 +93,23 @@ export function OTP() {
           result = state.smartLoginFlow
             ? await smartLoginComplete(payload)
             : await loginComplete(payload);
+
+          // FIX: after login, persist username from server response so the
+          // Success screen guard doesn't bounce email/phone-login users back to /.
+          // state.username may be "" when user logged in with email or phone.
+          const resolvedUsername =
+            (result as LoginCompleteResult).user?.username ??
+            state.username ??
+            "";
+          set({ token: result.token, username: resolvedUsername });
         } else {
           const payload = state.method === "sms"
             ? { pending_user_id: state.pendingUserId, method: "sms" as const, pinId: state.pinId ?? undefined, pin: code, phone: state.contact }
             : { pending_user_id: state.pendingUserId, method: "email" as const, email: state.contact, code, sessionToken: state.emailSessionToken ?? undefined };
           result = await completeRegistration(payload);
+          set({ token: result.token });
         }
 
-        set({ token: result.token });
         navigate(state.loginFlow ? "/success" : "/region");
       } catch (e) {
         const msg = e instanceof ApiError ? e.message : "Incorrect code. Try again.";
