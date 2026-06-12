@@ -24,10 +24,13 @@ export function Success() {
   const appLabel        = state.appId ? (APP_LABELS[state.appId] ?? state.appId) : null;
   const reservedMail    = state.username ? `${state.username}@rald.me` : null;
 
-  // Guard: must have username to be on this screen
+  // Guard: must have a token (or username for registration flow) to be on this screen.
+  // FIX: do NOT gate solely on username — users who logged in with email/phone have a
+  // valid token but username may be "" until the server response is merged into state.
+  // Bouncing them back to "/" caused the entire email/phone login flow to silently fail.
   useEffect(() => {
-    if (!state.username) { navigate("/"); return; }
-  }, [state.username, navigate]);
+    if (!state.token && !state.username) { navigate("/"); return; }
+  }, [state.token, state.username, navigate]);
 
   // Warn when token is missing — redirect will still fire but without token
   const missingToken = !state.token;
@@ -39,7 +42,7 @@ export function Success() {
     return () => clearTimeout(t);
   }, [secs, target]);
 
-  if (!state.username) return null;
+  if (!state.token && !state.username) return null;
 
   return (
     <Shell step={5}>
@@ -80,7 +83,9 @@ export function Success() {
 
         <h1>
           Welcome,{" "}
-          <span className="text-green">@{state.username || "friend"}</span>
+          <span className="text-green">
+            {state.username ? `@${state.username}` : "back"}
+          </span>
         </h1>
         <p className="text-muted text-sm mt-3">
           Your RALD Identity is ready. You now have access to the entire ecosystem.
