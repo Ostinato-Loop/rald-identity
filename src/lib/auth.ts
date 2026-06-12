@@ -1,6 +1,7 @@
 // RALD Auth Client — browser-side calls to auth.rald.cloud
 // P4 additions (2026-06-11): claimUsernameForMigration, getIdentityStatus
 // Phase 6 additions (2026-06-11): smartLogin, smartLoginComplete, logout
+// UI Consolidation (2026-06-12): sessions, devices, profile — migrated from rald-auth-ui
 // LILCKY STUDIO LIMITED
 
 const AUTH =
@@ -18,7 +19,7 @@ export class ApiError extends Error {
 }
 
 async function raldFetch<T>(
-  method: "GET" | "POST" | "PATCH",
+  method: "GET" | "POST" | "PATCH" | "DELETE",
   path: string,
   body?: unknown,
   token?: string,
@@ -65,7 +66,7 @@ async function raldFetch<T>(
       clearTimeout(tid);
       if (retry.status >= 500) {
         const data: unknown = await retry.json().catch(() => ({}));
-        const msg = (data as { error?: string }).error ?? "Server error. Try again in a moment.";
+        const msg = (data as { error?: string }).error ?? "Something went wrong. Try again in a moment.";
         throw new ApiError(retry.status, msg);
       }
       res = retry;
@@ -167,6 +168,43 @@ export interface IdentityStatus {
   };
 }
 
+// UI Consolidation — session and device types (migrated from rald-auth-ui api.ts)
+export interface SessionEntry {
+  id:           string;
+  user_agent?:  string;
+  ip_address?:  string;
+  last_seen_at?: string;
+  created_at:   string;
+  expires_at?:  string;
+}
+
+export interface DeviceEntry {
+  id:            string;
+  device_name?:  string;
+  device_type?:  string;
+  is_trusted?:   boolean;
+  trusted?:      boolean;
+  last_seen_at:  string;
+}
+
+export interface ProfileData {
+  id:             string;
+  rald_id:        string;
+  email:          string;
+  name:           string | null;
+  role:           string;
+  phone:          string | null;
+  avatar_url:     string | null;
+  bio:            string | null;
+  email_verified: boolean;
+  phone_verified: boolean;
+  preferences:    Record<string, unknown>;
+  provisioned_apps: string[];
+  active_products:  string[];
+  created_at:     string;
+  identity_hub:   string;
+}
+
 // ── Core auth ─────────────────────────────────────────────────────────────────
 
 export const checkUsername = (username: string) =>
@@ -246,6 +284,39 @@ export const changeUsername = (token: string, newUsername: string, reason?: stri
     next_change_allowed: string;
   }>("POST", "/username/change", { new_username: newUsername, reason }, token);
 
+// ── Sessions (migrated from rald-auth-ui) ─────────────────────────────────────
+
+export const getSessions = (token: string) =>
+  raldFetch<SessionEntry[]>("GET", "/auth/sessions", undefined, token);
+
+export const revokeSession = (token: string, id: string) =>
+  raldFetch<{ message: string }>("DELETE", `/auth/sessions/${id}`, undefined, token);
+
+export const revokeAllSessions = (token: string) =>
+  raldFetch<{ message: string }>("POST", "/session/revoke-all", undefined, token);
+
+// ── Devices (migrated from rald-auth-ui) ─────────────────────────────────────
+
+export const getDevices = (token: string) =>
+  raldFetch<DeviceEntry[]>("GET", "/devices", undefined, token);
+
+export const removeDevice = (token: string, id: string) =>
+  raldFetch<{ message: string }>("DELETE", `/session/device/${id}`, undefined, token);
+
+export const trustDevice = (token: string, id: string) =>
+  raldFetch<{ message: string }>("POST", `/devices/${id}/trust`, undefined, token);
+
+// ── Profile (migrated from rald-auth-ui) ──────────────────────────────────────
+
+export const getProfile = (token: string) =>
+  raldFetch<ProfileData>("GET", "/profiles/me", undefined, token);
+
+export const updateProfile = (
+  token: string,
+  data: { display_name?: string; bio?: string; avatar_url?: string },
+) =>
+  raldFetch<{ ok: boolean }>("PATCH", "/profiles/me", data, token);
+
 // ── QR Code Login ─────────────────────────────────────────────────────────────
 
 export interface QrScanResult {
@@ -315,7 +386,6 @@ export const loginComplete = (payload: {
   raldFetch<LoginCompleteResult>("POST", "/auth/login-username/complete", payload);
 
 // ── Smart Login (Phase 6) ─────────────────────────────────────────────────────
-// Unified endpoint: auto-detects username / email / phone
 
 export interface SmartLoginResult {
   ok:              boolean;
