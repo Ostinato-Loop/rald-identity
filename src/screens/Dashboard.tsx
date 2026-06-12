@@ -30,7 +30,7 @@
       // Validate the session then forward to app.rald.cloud with SSO token
       getSession().then(result => {
         if (!mounted) return;
-        if (!result?.ok) {
+        if (!result?.valid) {
           // Session invalid — clear and redirect to login
           setState({ token: null });
           resetFlow();
