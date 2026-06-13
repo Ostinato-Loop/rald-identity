@@ -68,31 +68,6 @@ function VerifBadge({ state }: { state: string }) {
   );
 }
 
-// ── Completeness ring ──────────────────────────────────────────────────────────
-
-function CompletenessRing({ score }: { score: number }) {
-  const r = 22;
-  const circ = 2 * Math.PI * r;
-  const dash = circ * (score / 100);
-  return (
-    <svg width={56} height={56} viewBox="0 0 56 56" style={{ flexShrink: 0 }}>
-      <circle cx={28} cy={28} r={r} fill="none" stroke="var(--border)" strokeWidth={4} />
-      <circle
-        cx={28} cy={28} r={r} fill="none"
-        stroke={score >= 80 ? "var(--green)" : score >= 50 ? "var(--gold)" : "var(--muted)"}
-        strokeWidth={4}
-        strokeDasharray={`${dash} ${circ}`}
-        strokeLinecap="round"
-        transform="rotate(-90 28 28)"
-        style={{ transition: "stroke-dasharray 0.4s ease" }}
-      />
-      <text x={28} y={32} textAnchor="middle" fontSize={12} fontWeight={700} fill="var(--text)">
-        {score}%
-      </text>
-    </svg>
-  );
-}
-
 // ── Quick action card ──────────────────────────────────────────────────────────
 
 function ActionCard({
