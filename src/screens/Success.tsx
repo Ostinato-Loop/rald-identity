@@ -1,6 +1,6 @@
 import { useEffect, useState } from "react";
 import { useNavigate } from "react-router-dom";
-import { Check, Mail, ExternalLink, AlertTriangle } from "lucide-react";
+import { Check, Mail, ExternalLink } from "lucide-react";
 import { Shell } from "@/components/Shell";
 import { RaldMark } from "@/components/Logo";
 import { useStore } from "@/lib/store";
@@ -19,7 +19,7 @@ const PRODUCTS = [
 export function Success() {
   const navigate        = useNavigate();
   const [state]         = useStore();
-  const [secs, setSecs] = useState(5);
+  const [secs, setSecs] = useState(2);
   const target          = resolveRedirectUrl(state);
   const appLabel        = state.appId ? (APP_LABELS[state.appId] ?? state.appId) : null;
   const reservedMail    = state.username ? `${state.username}@rald.me` : null;
@@ -32,8 +32,9 @@ export function Success() {
     if (!state.token && !state.username) { navigate("/"); return; }
   }, [state.token, state.username, navigate]);
 
-  // Warn when token is missing — redirect will still fire but without token
-  const missingToken = !state.token;
+  // ZERO-FRICTION-001: If token is missing the redirect fires anyway; the
+  // destination app (Loop) will attempt its own SSO recovery via /sso/silent.
+  // Do NOT show a warning — it exposes internal state and confuses users.
 
   // Auto-redirect countdown
   useEffect(() => {
@@ -90,27 +91,6 @@ export function Success() {
         <p className="text-muted text-sm mt-3">
           Your RALD Identity is ready. You now have access to the entire ecosystem.
         </p>
-
-        {/* Token-missing warning */}
-        {missingToken && (
-          <div
-            style={{
-              display: "flex",
-              alignItems: "center",
-              gap: 8,
-              marginTop: 16,
-              padding: "10px 14px",
-              background: "oklch(0.58 0.20 25 / 0.10)",
-              borderRadius: 10,
-              border: "1px solid oklch(0.58 0.20 25 / 0.25)",
-            }}
-          >
-            <AlertTriangle size={15} color="oklch(0.58 0.20 25)" />
-            <span className="text-xs" style={{ color: "oklch(0.58 0.20 25)", fontWeight: 600 }}>
-              Session token missing — the destination app may require you to sign in again.
-            </span>
-          </div>
-        )}
 
         {/* Reserved mail badge */}
         {reservedMail && (
