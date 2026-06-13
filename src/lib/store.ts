@@ -156,7 +156,16 @@ import { useState, useEffect } from "react";
   /**
    * Build the post-auth redirect URL.
    * Default destination is app.rald.cloud — the RALD ecosystem hub.
-   * SSO-TOKEN-001: appends rald_token + app_id so calling apps can exchange for session.
+   *
+   * SESSION-TOKEN-001 (2026-06-13): rald_token (master JWT) is NO LONGER
+   * appended to redirect URLs. The rald_session HttpOnly cookie
+   * (Domain=.rald.cloud, 30-day TTL) is propagated automatically by the
+   * browser to all *.rald.cloud subdomains, eliminating the need for a
+   * token in the URL. Destination apps call their own /auth/silent endpoint
+   * which reads the rald_session cookie and issues a product-scoped session.
+   *
+   * app_id is retained as a non-sensitive routing hint so receiving apps
+   * know which product context to initialise.
    */
   export function resolveRedirectUrl(state: OnboardingState): string {
     let base: string;
@@ -169,17 +178,16 @@ import { useState, useEffect } from "react";
       base = "https://app.rald.cloud";
     }
 
-    if (!state.token) return base;
+    // Only append app_id as a routing hint — never the master JWT
+    if (!state.appId) return base;
 
     try {
       const url = new URL(base);
-      url.searchParams.set("rald_token", state.token);
-      if (state.appId) url.searchParams.set("app_id", state.appId);
+      url.searchParams.set("app_id", state.appId);
       return url.toString();
     } catch {
       const sep = base.includes("?") ? "&" : "?";
-      const appPart = state.appId ? `&app_id=${encodeURIComponent(state.appId)}` : "";
-      return `${base}${sep}rald_token=${encodeURIComponent(state.token)}${appPart}`;
+      return `${base}${sep}app_id=${encodeURIComponent(state.appId)}`;
     }
   }
 
