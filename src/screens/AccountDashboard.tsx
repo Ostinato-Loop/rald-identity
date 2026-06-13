@@ -27,7 +27,7 @@ import { RaldMark } from "@/components/Logo";
 import { getSession, getIdentityStatus, logout, type IdentityStatus } from "@/lib/auth";
 import { useStore, setState, resetFlow } from "@/lib/store";
 
-type SectionId = "overview" | "security" | "developer" | "privacy";
+type _SectionId = "overview" | "security" | "developer" | "privacy";
 
 // ── Trust badge ───────────────────────────────────────────────────────────────
 
@@ -71,6 +71,8 @@ function VerifBadge({ state }: { state: string }) {
 
 // ── Completeness ring ──────────────────────────────────────────────────────────
 
+// @ts-ignore — reserved for Phase 2 (score ring UI)
+// eslint-disable-next-line @typescript-eslint/no-unused-vars
 function CompletenessRing({ score }: { score: number }) {
   const r = 22;
   const circ = 2 * Math.PI * r;
